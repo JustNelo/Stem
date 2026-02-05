@@ -1,4 +1,6 @@
 import type { Note } from "../../types";
+import { cn, formatDate } from "../../lib";
+import { Button, IconButton, PlusIcon, TrashIcon } from "../ui";
 
 interface SidebarProps {
   notes: Note[];
@@ -7,13 +9,7 @@ interface SidebarProps {
   onCreateNote: () => void;
   onDeleteNote: (id: string) => void;
   isLoading: boolean;
-}
-
-function formatDate(timestamp: number): string {
-  return new Date(timestamp * 1000).toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "short",
-  });
+  isCollapsed: boolean;
 }
 
 export function Sidebar({
@@ -23,80 +19,91 @@ export function Sidebar({
   onCreateNote,
   onDeleteNote,
   isLoading,
+  isCollapsed,
 }: SidebarProps) {
+  if (isCollapsed) return null;
+
   return (
-    <aside className="flex h-full w-64 flex-col border-r border-gray-200 bg-gray-50">
-      <div className="flex items-center justify-between border-b border-gray-200 p-3">
-        <span className="text-sm font-medium text-gray-600">Notes</span>
-        <button
-          onClick={onCreateNote}
-          className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-gray-800"
-        >
-          + Nouvelle
-        </button>
+    <aside className="flex h-full w-64 shrink-0 flex-col border-r-2 border-border-light bg-bg-secondary">
+      <div className="flex items-center justify-between border-b-2 border-border-light p-3">
+        <span className="text-sm font-bold uppercase tracking-wider text-text-secondary">
+          Notes
+        </span>
+        <Button onClick={onCreateNote} size="sm">
+          <PlusIcon className="mr-1 h-3 w-3" />
+          New
+        </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <nav className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center p-4">
-            <span className="text-sm text-gray-500">Chargement...</span>
+            <span className="text-sm text-text-muted">Loading...</span>
           </div>
         ) : notes.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-6 text-center">
-            <p className="text-sm text-gray-500">Aucune note</p>
-            <p className="mt-1 text-xs text-gray-400">
-              Créez votre première note
+            <p className="text-sm font-medium text-text-secondary">No notes yet</p>
+            <p className="mt-1 text-xs text-text-muted">
+              Create your first note
             </p>
           </div>
         ) : (
-          <ul className="py-2">
+          <ul>
             {notes.map((note) => (
-              <li key={note.id}>
-                <button
-                  onClick={() => onSelectNote(note)}
-                  className={`group flex w-full items-start justify-between px-3 py-2 text-left transition-colors ${
-                    selectedNote?.id === note.id
-                      ? "bg-gray-200"
-                      : "hover:bg-gray-100"
-                  }`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-gray-900">
-                      {note.title}
-                    </p>
-                    <p className="mt-0.5 text-xs text-gray-500">
-                      {formatDate(note.updated_at)}
-                    </p>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteNote(note.id);
-                    }}
-                    className="ml-2 rounded p-1 text-gray-400 opacity-0 transition-opacity hover:bg-gray-300 hover:text-red-600 group-hover:opacity-100"
-                    title="Supprimer"
-                  >
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </button>
-                </button>
-              </li>
+              <NoteItem
+                key={note.id}
+                note={note}
+                isSelected={selectedNote?.id === note.id}
+                onSelect={() => onSelectNote(note)}
+                onDelete={() => onDeleteNote(note.id)}
+              />
             ))}
           </ul>
         )}
-      </div>
+      </nav>
     </aside>
+  );
+}
+
+interface NoteItemProps {
+  note: Note;
+  isSelected: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
+}
+
+function NoteItem({ note, isSelected, onSelect, onDelete }: NoteItemProps) {
+  return (
+    <li>
+      <button
+        onClick={onSelect}
+        className={cn(
+          "group flex w-full items-start justify-between px-3 py-2.5 text-left transition-colors duration-150",
+          isSelected
+            ? "border-l-2 border-text bg-bg-hover"
+            : "border-l-2 border-transparent hover:bg-bg-hover"
+        )}
+      >
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-text">
+            {note.title || "Sans titre"}
+          </p>
+          <p className="mt-0.5 text-xs text-text-muted">
+            {formatDate(note.updated_at)}
+          </p>
+        </div>
+        <IconButton
+          icon={<TrashIcon />}
+          label="Delete"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          className="opacity-0 group-hover:opacity-100"
+        />
+      </button>
+    </li>
   );
 }
 

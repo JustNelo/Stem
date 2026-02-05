@@ -1,5 +1,6 @@
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
+import "./editor.css";
 
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
@@ -22,8 +23,8 @@ export function Editor({ initialContent, onChange }: EditorProps) {
   };
 
   return (
-    <div className="h-full w-full">
-      <BlockNoteView editor={editor} onChange={handleChange} theme="light" />
+    <div className="editor-wrapper">
+      <BlockNoteView editor={editor} onChange={handleChange} theme="dark" />
     </div>
   );
 }

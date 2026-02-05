@@ -1,9 +1,13 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useState } from "react";
 import { MantineProvider } from "@mantine/core";
 import "@mantine/core/styles.css";
+
 import Editor from "./components/Editor";
-import Sidebar from "./components/Sidebar";
+import { CommandPalette } from "./components/CommandPalette";
 import { useNotes } from "./hooks/useNotes";
+import { useAutoSave } from "./hooks/useAutoSave";
+
+type View = "home" | "editor";
 
 function App() {
   const {
@@ -12,25 +16,41 @@ function App() {
     isLoading,
     createNote,
     updateNote,
-    deleteNote,
     selectNote,
   } = useNotes();
 
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [view, setView] = useState<View>("home");
+
+  const handleSelectNote = useCallback(
+    (note: typeof selectedNote) => {
+      selectNote(note);
+      if (note) setView("editor");
+    },
+    [selectNote]
+  );
+
+  const handleBack = useCallback(() => {
+    setView("home");
+    selectNote(null);
+  }, [selectNote]);
+
+  const handleSaveContent = useCallback(
+    async (content: string) => {
+      if (!selectedNote) return;
+      await updateNote(selectedNote.id, { content });
+    },
+    [selectedNote, updateNote]
+  );
+
+  const { status: saveStatus, save: triggerSave } = useAutoSave({
+    onSave: handleSaveContent,
+  });
 
   const handleContentChange = useCallback(
     (content: string) => {
-      if (!selectedNote) return;
-
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-
-      saveTimeoutRef.current = setTimeout(() => {
-        updateNote(selectedNote.id, { content });
-      }, 500);
+      triggerSave(content);
     },
-    [selectedNote, updateNote]
+    [triggerSave]
   );
 
   const handleTitleChange = useCallback(
@@ -41,61 +61,98 @@ function App() {
     [selectedNote, updateNote]
   );
 
+  const handleCreateNote = useCallback(async () => {
+    const note = await createNote();
+    if (note) {
+      setView("editor");
+    }
+  }, [createNote]);
+
   return (
     <MantineProvider>
-      <div className="flex h-screen w-screen bg-white">
-        <Sidebar
-          notes={notes}
-          selectedNote={selectedNote}
-          onSelectNote={selectNote}
-          onCreateNote={createNote}
-          onDeleteNote={deleteNote}
-          isLoading={isLoading}
-        />
+      <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-black">
+        {/* Noise overlay */}
+        <div className="noise absolute inset-0 z-50" />
 
-        <div className="flex flex-1 flex-col">
-          <header className="flex h-12 shrink-0 items-center border-b border-gray-200 px-4">
-            {selectedNote ? (
+        {view === "home" ? (
+          <CommandPalette
+            notes={notes}
+            onSelectNote={handleSelectNote}
+            onCreateNote={handleCreateNote}
+            isLoading={isLoading}
+          />
+        ) : (
+          <>
+            {/* Editor header */}
+            <header className="relative z-10 flex h-14 shrink-0 items-center gap-4 border-b border-zinc-800/50 bg-black px-4">
+              <button
+                onClick={handleBack}
+                className="flex items-center gap-2 rounded-lg px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-zinc-500 transition-colors duration-150 hover:bg-zinc-900 hover:text-white"
+              >
+                <ChevronLeftIcon className="h-4 w-4" />
+                Retour
+              </button>
+
+              <div className="h-4 w-px bg-zinc-800" />
+
               <input
                 type="text"
-                value={selectedNote.title}
+                value={selectedNote?.title || ""}
                 onChange={handleTitleChange}
-                className="w-full bg-transparent text-lg font-semibold text-gray-800 outline-none placeholder:text-gray-400"
-                placeholder="Titre de la note..."
+                placeholder="Sans titre"
+                className="flex-1 bg-transparent text-sm font-medium text-white outline-none placeholder:text-zinc-700"
               />
-            ) : (
-              <h1 className="text-lg font-semibold text-gray-800">STEM</h1>
-            )}
-          </header>
 
-          <main className="flex-1 overflow-auto">
-            {selectedNote ? (
-              <div className="mx-auto max-w-4xl p-4">
-                <Editor
-                  key={selectedNote.id}
-                  initialContent={selectedNote.content || undefined}
-                  onChange={handleContentChange}
-                />
-              </div>
-            ) : (
-              <div className="flex h-full items-center justify-center">
-                <div className="text-center">
-                  <p className="text-lg text-gray-500">
-                    Sélectionnez une note ou créez-en une nouvelle
-                  </p>
-                  <button
-                    onClick={createNote}
-                    className="mt-4 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800"
-                  >
-                    + Nouvelle note
-                  </button>
+              <SaveIndicator status={saveStatus} />
+            </header>
+
+            {/* Editor content */}
+            <main className="relative z-10 flex-1 overflow-auto">
+              {/* Background gradient */}
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-900/50 via-black to-black" />
+
+              {selectedNote && (
+                <div className="relative mx-auto max-w-3xl px-6 py-12">
+                  <Editor
+                    key={selectedNote.id}
+                    initialContent={selectedNote.content || undefined}
+                    onChange={handleContentChange}
+                  />
                 </div>
-              </div>
-            )}
-          </main>
-        </div>
+              )}
+            </main>
+          </>
+        )}
       </div>
     </MantineProvider>
+  );
+}
+
+function ChevronLeftIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
+    </svg>
+  );
+}
+
+function SaveIndicator({ status }: { status: "idle" | "saving" | "saved" }) {
+  if (status === "idle") return null;
+
+  return (
+    <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-zinc-600">
+      {status === "saving" ? (
+        <>
+          <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-zinc-500" />
+          <span>Saving...</span>
+        </>
+      ) : (
+        <>
+          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          <span>Saved</span>
+        </>
+      )}
+    </div>
   );
 }
 
