@@ -1,6 +1,8 @@
 import { useCallback, useState, useEffect } from "react";
 import { MantineProvider } from "@mantine/core";
 import { motion, AnimatePresence } from "framer-motion";
+import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 import "@mantine/core/styles.css";
 
 import Editor from "./components/Editor";
@@ -15,6 +17,32 @@ const pageVariants = {
   animate: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: -20 },
 };
+
+function extractTextFromContent(content: string): string {
+  try {
+    const blocks = JSON.parse(content);
+    let text = "";
+    
+    const extract = (obj: unknown): void => {
+      if (!obj || typeof obj !== "object") return;
+      if (Array.isArray(obj)) {
+        obj.forEach(extract);
+        return;
+      }
+      const record = obj as Record<string, unknown>;
+      if (typeof record.text === "string") {
+        text += " " + record.text;
+      }
+      if (record.content) extract(record.content);
+      if (record.children) extract(record.children);
+    };
+    
+    extract(blocks);
+    return text.trim();
+  } catch {
+    return "";
+  }
+}
 
 const pageTransition = {
   type: "spring" as const,
@@ -36,6 +64,30 @@ function App() {
 
   const [view, setView] = useState<View>("home");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+
+  const handleSummarize = useCallback(async () => {
+    if (!selectedNote?.content || isSummarizing) return;
+    
+    setIsSummarizing(true);
+    setSummary(null);
+    
+    try {
+      const text = extractTextFromContent(selectedNote.content);
+      if (!text.trim()) {
+        setSummary("Aucun contenu à résumer.");
+        return;
+      }
+      
+      const result = await invoke<string>("summarize_note", { content: text });
+      setSummary(result || "Résumé vide.");
+    } catch (error) {
+      setSummary(`Erreur: ${error}. Vérifiez qu'Ollama est lancé avec le modèle mistral.`);
+    } finally {
+      setIsSummarizing(false);
+    }
+  }, [selectedNote, isSummarizing]);
 
   const toggleSidebar = useCallback(() => {
     setIsSidebarOpen((prev) => !prev);
@@ -114,6 +166,17 @@ function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [view, handleBack, isSidebarOpen]);
 
+  // Listen for quick-capture global shortcut event
+  useEffect(() => {
+    const unlisten = listen("quick-capture", () => {
+      handleCreateNote();
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [handleCreateNote]);
+
   return (
     <MantineProvider>
       <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-black">
@@ -191,8 +254,50 @@ function App() {
                   </div>
                 </div>
 
+                <motion.button
+                  onClick={handleSummarize}
+                  disabled={isSummarizing}
+                  className="flex items-center gap-2 rounded-lg bg-purple-500/10 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-purple-400 transition-colors duration-150 hover:bg-purple-500/20 disabled:opacity-50"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <span className="text-sm">✦</span>
+                  {isSummarizing ? "Résumé..." : "Résumer"}
+                </motion.button>
+
                 <SaveIndicator status={saveStatus} />
               </header>
+
+              {/* AI Summary panel */}
+              <AnimatePresence>
+                {summary && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    className="relative z-10 overflow-hidden border-b border-zinc-800/50 bg-purple-500/5"
+                  >
+                    <div className="flex items-start gap-3 px-4 py-3">
+                      <span className="mt-0.5 text-purple-400">✦</span>
+                      <div className="flex-1">
+                        <div className="mb-1 font-mono text-[10px] uppercase tracking-widest text-purple-400">
+                          Résumé IA
+                        </div>
+                        <p className="text-sm leading-relaxed text-zinc-300">
+                          {summary}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setSummary(null)}
+                        className="text-zinc-600 transition-colors hover:text-white"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Editor content */}
               <main className="relative z-10 flex-1 overflow-auto">

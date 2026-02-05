@@ -1,14 +1,18 @@
 mod commands;
 mod db;
+mod ollama;
 
 use commands::{create_note, delete_note, get_all_notes, get_note, init_database, update_note};
 use db::Database;
-use tauri::Manager;
+use ollama::summarize_note;
+use tauri::{Emitter, Manager};
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir().expect("Failed to get app data dir");
             std::fs::create_dir_all(&app_data_dir).expect("Failed to create app data dir");
@@ -18,6 +22,19 @@ pub fn run() {
             database.init().expect("Failed to initialize database");
             
             app.manage(database);
+
+            // Register global shortcut Ctrl+Shift+N for quick capture
+            let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyN);
+            let app_handle = app.handle().clone();
+            
+            app.global_shortcut().on_shortcut(shortcut, move |_app, _shortcut, _event| {
+                if let Some(window) = app_handle.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                    let _ = window.emit("quick-capture", ());
+                }
+            })?;
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -26,7 +43,8 @@ pub fn run() {
             get_note,
             get_all_notes,
             update_note,
-            delete_note
+            delete_note,
+            summarize_note
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
