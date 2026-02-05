@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Note, CreateNotePayload, UpdateNotePayload } from "../types";
+import type { Note, CreateNotePayload, UpdateNotePayload } from "@/types";
 
 export async function initDatabase(): Promise<void> {
   return invoke("init_database");

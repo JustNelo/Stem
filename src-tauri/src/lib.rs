@@ -5,7 +5,7 @@ mod ollama;
 use commands::{create_note, delete_note, get_all_notes, get_note, init_database, update_note, seed_notes};
 use db::Database;
 use ollama::summarize_note;
-use tauri::{Manager, AppHandle, Emitter};
+use tauri::{Manager, Emitter};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

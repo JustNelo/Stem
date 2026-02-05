@@ -5,14 +5,14 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import "@mantine/core/styles.css";
 
-import Editor from "./components/Editor";
-import { CommandPalette } from "./components/CommandPalette";
-import { TitleBar } from "./components/TitleBar";
-import { Layout } from "./components/layout";
-import { QuickCapture } from "./components/QuickCapture";
-import { useNotes } from "./hooks/useNotes";
-import { useAutoSave } from "./hooks/useAutoSave";
-import { countWords } from "./lib/format";
+import Editor from "@/components/Editor";
+import { CommandPalette } from "@/components/CommandPalette";
+import { TitleBar } from "@/components/TitleBar";
+import { Layout } from "@/components/layout";
+import { QuickCapture } from "@/components/QuickCapture";
+import { useNotesStore } from "@/store/useNotesStore";
+import { useAutoSave } from "@/hooks/useAutoSave";
+import { countWords } from "@/lib/format";
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -56,19 +56,30 @@ type View = "home" | "editor";
 
 function App() {
   const {
-    notes,
     selectedNote,
-    isLoading,
     createNote,
     updateNote,
-    deleteNote,
     selectNote,
-    seedNotes,
-  } = useNotes();
+    fetchNotes,
+  } = useNotesStore();
+
+  useEffect(() => {
+    fetchNotes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [view, setView] = useState<View>("home");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isQuickCapture, setIsQuickCapture] = useState(false);
+
+  // Sync view with selected note
+  useEffect(() => {
+    if (selectedNote) {
+      setView("editor");
+    } else {
+      setView("home");
+    }
+  }, [selectedNote]);
 
   // Handle AI commands from Copilot sidebar
   const handleExecuteCommand = useCallback(async (command: string, args?: string): Promise<string> => {
@@ -121,14 +132,6 @@ function App() {
     }
   }, [selectedNote]);
 
-  const handleSelectNote = useCallback(
-    (note: typeof selectedNote) => {
-      selectNote(note);
-      if (note) setView("editor");
-    },
-    [selectNote]
-  );
-
   const handleBack = useCallback(() => {
     setView("home");
     selectNote(null);
@@ -161,13 +164,6 @@ function App() {
     [selectedNote, updateNote]
   );
 
-  const handleCreateNote = useCallback(async () => {
-    const note = await createNote();
-    if (note) {
-      setView("editor");
-    }
-  }, [createNote]);
-
   // Check if this is the quick-capture window
   useEffect(() => {
     const appWindow = getCurrentWindow();
@@ -178,8 +174,12 @@ function App() {
 
   // Quick capture save handler
   const handleQuickCaptureSave = useCallback(async (content: string) => {
-    const note = await createNote();
-    if (note) {
+    try {
+      const note = await createNote();
+      if (!note) {
+        console.error("Failed to create note for quick capture");
+        return;
+      }
       await updateNote(note.id, { 
         title: content.split('\n')[0].slice(0, 50) || "Quick note",
         content: JSON.stringify([{
@@ -187,6 +187,8 @@ function App() {
           content: [{ type: "text", text: content }]
         }])
       });
+    } catch (error) {
+      console.error("Error saving quick capture:", error);
     }
   }, [createNote, updateNote]);
 
@@ -211,14 +213,19 @@ function App() {
   // Listen for refresh-notes event from Quick Capture window
   useEffect(() => {
     const appWindow = getCurrentWindow();
-    const unlisten = appWindow.listen("refresh-notes", () => {
-      // Refresh notes list
-      window.location.reload();
+    let unlistenFn: (() => void) | null = null;
+    
+    appWindow.listen("refresh-notes", () => {
+      // Refresh notes list without full page reload
+      fetchNotes();
+    }).then((fn) => {
+      unlistenFn = fn;
     });
 
     return () => {
-      unlisten.then((fn) => fn());
+      if (unlistenFn) unlistenFn();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 
@@ -246,13 +253,7 @@ function App() {
             exit="exit"
             transition={pageTransition}
           >
-            <CommandPalette
-              notes={notes}
-              onSelectNote={handleSelectNote}
-              onCreateNote={handleCreateNote}
-              onSeedNotes={seedNotes}
-              isLoading={isLoading}
-            />
+            <CommandPalette />
           </motion.div>
         ) : (
           <motion.div
@@ -265,11 +266,6 @@ function App() {
             transition={pageTransition}
           >
             <Layout
-              notes={notes}
-              selectedNote={selectedNote}
-              onSelectNote={handleSelectNote}
-              onCreateNote={handleCreateNote}
-              onDeleteNote={deleteNote}
               showSidebar={true}
               onExecuteCommand={handleExecuteCommand}
               isProcessing={isProcessing}
@@ -296,7 +292,7 @@ function App() {
                   onChange={handleTitleChange}
                   placeholder="Commencez à écrire..."
                   className="w-full bg-transparent font-semibold tracking-tight text-text outline-none placeholder:text-text-ghost"
-                  style={{ fontSize: "3rem", lineHeight: 1.1 }}
+                  style={{ fontSize: "3rem" }}
                 />
 
                 {/* Metadata bar */}

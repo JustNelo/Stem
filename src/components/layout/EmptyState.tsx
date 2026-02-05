@@ -1,4 +1,4 @@
-import { Button, FileTextIcon, PlusIcon } from "../ui";
+import { Button, FileTextIcon, PlusIcon } from "@/components/ui";
 
 interface EmptyStateProps {
   onCreateNote: () => void;

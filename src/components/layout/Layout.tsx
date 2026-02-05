@@ -1,16 +1,11 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import type { Note } from "../../types";
-import { formatRelativeTime } from "../../lib/format";
-import { AISidebar } from "../AISidebar";
+import { useNotesStore } from "@/store/useNotesStore";
+import { formatRelativeTime } from "@/lib/format";
+import { AISidebar } from "@/components/AISidebar";
 
 interface LayoutProps {
   children: React.ReactNode;
-  notes?: Note[];
-  selectedNote?: Note | null;
-  onSelectNote?: (note: Note) => void;
-  onCreateNote?: () => void;
-  onDeleteNote?: (id: string) => void;
   showSidebar?: boolean;
   // AI Sidebar props
   onExecuteCommand?: (command: string, args?: string) => Promise<string>;
@@ -21,15 +16,11 @@ const SIDEBAR_WIDTH = 256;
 
 export function Layout({
   children,
-  notes = [],
-  selectedNote,
-  onSelectNote,
-  onCreateNote,
-  onDeleteNote,
   showSidebar = true,
   onExecuteCommand,
   isProcessing = false,
 }: LayoutProps) {
+  const { notes, selectedNote, selectNote, createNote, deleteNote } = useNotesStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAISidebarOpen, setIsAISidebarOpen] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
@@ -97,14 +88,13 @@ export function Layout({
                     </svg>
                   )}
                 </button>
-                {onCreateNote && (
-                  <motion.button
-                    onClick={onCreateNote}
-                    className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-hover hover:text-text"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    aria-label="New note"
-                  >
+                <motion.button
+                  onClick={() => createNote()}
+                  className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-hover hover:text-text"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  aria-label="New note"
+                >
                     <svg
                       width="14"
                       height="14"
@@ -120,7 +110,6 @@ export function Layout({
                       />
                     </svg>
                   </motion.button>
-                )}
                 <motion.button
                   onClick={() => setIsSidebarOpen(false)}
                   className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
@@ -160,7 +149,7 @@ export function Layout({
                       }`}
                     >
                       <button
-                        onClick={() => onSelectNote?.(note)}
+                        onClick={() => selectNote(note)}
                         className="flex-1 cursor-pointer px-3 py-2 text-left"
                       >
                         <div className="mb-1 truncate text-sm font-medium tracking-tight text-text">
@@ -264,7 +253,7 @@ export function Layout({
               </button>
               <button
                 onClick={() => {
-                  onDeleteNote?.(noteToDelete);
+                  if (noteToDelete) deleteNote(noteToDelete);
                   setNoteToDelete(null);
                 }}
                 className="flex-1 rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600"

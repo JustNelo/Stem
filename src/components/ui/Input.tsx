@@ -1,5 +1,5 @@
 import { forwardRef, type InputHTMLAttributes } from "react";
-import { cn } from "../../lib";
+import { cn } from "@/lib";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   variant?: "default" | "ghost";

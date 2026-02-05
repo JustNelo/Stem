@@ -1,6 +1,6 @@
-import { cn } from "../../lib";
-import { Input } from "../ui";
-import { IconButton, MenuIcon, CheckIcon, LoaderIcon } from "../ui";
+import { cn } from "@/lib";
+import { Input } from "@/components/ui";
+import { IconButton, MenuIcon, CheckIcon, LoaderIcon } from "@/components/ui";
 
 type SaveStatus = "idle" | "saving" | "saved";
 

@@ -1,37 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import type { Note } from "../../types";
-import { cn } from "../../lib";
+import { useNotesStore } from "@/store/useNotesStore";
+import { cn } from "@/lib";
 
 const listItemVariants = {
-  hidden: { opacity: 0, x: -20 },
+  hidden: { opacity: 0 },
   visible: (i: number) => ({
     opacity: 1,
-    x: 0,
     transition: {
       delay: i * 0.05,
-      type: "spring" as const,
-      stiffness: 300,
-      damping: 24,
+      duration: 0.2,
     },
   }),
 };
 
-interface CommandPaletteProps {
-  notes: Note[];
-  onSelectNote: (note: Note) => void;
-  onCreateNote: () => void;
-  onSeedNotes?: () => void;
-  isLoading: boolean;
-}
-
-export function CommandPalette({
-  notes,
-  onSelectNote,
-  onCreateNote,
-  onSeedNotes,
-  isLoading,
-}: CommandPaletteProps) {
+export function CommandPalette() {
+  const { notes, selectNote, createNote, seedNotes, isLoading } = useNotesStore();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -70,18 +54,18 @@ export function CommandPalette({
       if (e.key === "Enter") {
         e.preventDefault();
         if (selectedIndex < filteredNotes.length) {
-          onSelectNote(filteredNotes[selectedIndex]);
+          selectNote(filteredNotes[selectedIndex]);
         }
       }
       if (e.key === "n" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
-        onCreateNote();
+        createNote();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [filteredNotes, selectedIndex, totalItems, onSelectNote, onCreateNote]);
+  }, [filteredNotes, selectedIndex, totalItems, selectNote, createNote]);
 
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden bg-surface pt-10">
@@ -134,7 +118,7 @@ export function CommandPalette({
                         variants={listItemVariants}
                         initial="hidden"
                         animate="visible"
-                        onClick={() => onSelectNote(note)}
+                        onClick={() => selectNote(note)}
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.99 }}
                         className={cn(
@@ -186,9 +170,9 @@ export function CommandPalette({
             </kbd>
             Quick Capture
           </span>
-          {onSeedNotes && (
+          {seedNotes && (
             <button
-              onClick={onSeedNotes}
+              onClick={() => seedNotes()}
               className="flex cursor-pointer items-center gap-2 rounded border border-border bg-surface-elevated px-2 py-0.5 transition-colors hover:bg-surface-hover"
             >
               🌱 Seed 30 notes

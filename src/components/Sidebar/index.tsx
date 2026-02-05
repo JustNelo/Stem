@@ -1,26 +1,15 @@
-import type { Note } from "../../types";
-import { cn, formatDate } from "../../lib";
-import { Button, IconButton, PlusIcon, TrashIcon } from "../ui";
+import { useNotesStore } from "@/store/useNotesStore";
+import { cn, formatDate } from "@/lib";
+import { Button, IconButton, PlusIcon, TrashIcon } from "@/components/ui";
+import type { Note } from "@/types";
 
 interface SidebarProps {
-  notes: Note[];
-  selectedNote: Note | null;
-  onSelectNote: (note: Note) => void;
-  onCreateNote: () => void;
-  onDeleteNote: (id: string) => void;
-  isLoading: boolean;
   isCollapsed: boolean;
 }
 
-export function Sidebar({
-  notes,
-  selectedNote,
-  onSelectNote,
-  onCreateNote,
-  onDeleteNote,
-  isLoading,
-  isCollapsed,
-}: SidebarProps) {
+export function Sidebar({ isCollapsed }: SidebarProps) {
+  const { notes, selectedNote, selectNote, createNote, deleteNote, isLoading } = useNotesStore();
+
   if (isCollapsed) return null;
 
   return (
@@ -29,7 +18,7 @@ export function Sidebar({
         <span className="text-sm font-bold uppercase tracking-wider text-text-secondary">
           Notes
         </span>
-        <Button onClick={onCreateNote} size="sm">
+        <Button onClick={() => createNote()} size="sm">
           <PlusIcon className="mr-1 h-3 w-3" />
           New
         </Button>
@@ -54,8 +43,8 @@ export function Sidebar({
                 key={note.id}
                 note={note}
                 isSelected={selectedNote?.id === note.id}
-                onSelect={() => onSelectNote(note)}
-                onDelete={() => onDeleteNote(note.id)}
+                onSelect={() => selectNote(note)}
+                onDelete={() => deleteNote(note.id)}
               />
             ))}
           </ul>

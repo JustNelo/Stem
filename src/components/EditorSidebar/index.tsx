@@ -1,13 +1,9 @@
 import { motion, AnimatePresence } from "framer-motion";
-import type { Note } from "../../types";
-import { cn } from "../../lib";
-import { formatRelativeTime } from "../../lib/format";
+import { useNotesStore } from "@/store/useNotesStore";
+import { cn } from "@/lib";
+import { formatRelativeTime } from "@/lib/format";
 
 interface EditorSidebarProps {
-  notes: Note[];
-  selectedNote: Note | null;
-  onSelectNote: (note: Note) => void;
-  onCreateNote: () => void;
   isOpen: boolean;
   onToggle: () => void;
 }
@@ -31,14 +27,9 @@ const listItemVariants = {
   }),
 };
 
-export function EditorSidebar({
-  notes,
-  selectedNote,
-  onSelectNote,
-  onCreateNote,
-  isOpen,
-  onToggle,
-}: EditorSidebarProps) {
+export function EditorSidebar({ isOpen, onToggle }: EditorSidebarProps) {
+  const { notes, selectedNote, selectNote, createNote } = useNotesStore();
+
   return (
     <>
       {/* Hover trigger zone */}
@@ -79,7 +70,7 @@ export function EditorSidebar({
                   Notes
                 </span>
                 <motion.button
-                  onClick={onCreateNote}
+                  onClick={() => createNote()}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-900 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
@@ -98,7 +89,7 @@ export function EditorSidebar({
                     initial="hidden"
                     animate="visible"
                     onClick={() => {
-                      onSelectNote(note);
+                      selectNote(note);
                       onToggle();
                     }}
                     whileHover={{ scale: 1.01 }}
