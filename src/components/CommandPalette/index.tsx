@@ -17,21 +17,18 @@ const listItemVariants = {
 };
 
 export function CommandPalette() {
-  const { notes, selectNote, createNote, seedNotes, isLoading } = useNotesStore();
+  const { notes, selectNote, createNote, isLoading } = useNotesStore();
   const { userName } = useSettingsStore();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const filteredNotes = notes.filter((note) =>
     note.title.toLowerCase().includes(query.toLowerCase())
   );
 
-  const aiActions = [
-    { id: "summarize", label: "Résumer mes dernières notes", icon: "✦" },
-  ];
-
-  const totalItems = filteredNotes.length + aiActions.length;
+  const totalItems = filteredNotes.length;
 
   useEffect(() => {
     setSelectedIndex(0);
@@ -40,6 +37,13 @@ export function CommandPalette() {
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  // Scroll selected item into view
+  useEffect(() => {
+    if (!listRef.current) return;
+    const items = listRef.current.querySelectorAll("[data-note-item]");
+    items[selectedIndex]?.scrollIntoView({ block: "nearest" });
+  }, [selectedIndex]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -115,7 +119,7 @@ export function CommandPalette() {
           </div>
 
           {/* Results */}
-          <div className="max-h-80 overflow-y-auto p-2">
+          <div ref={listRef} className="max-h-80 overflow-y-auto p-2">
             {isLoading ? (
               <div className="px-4 py-8 text-center text-sm text-text-muted">
                 Chargement...
@@ -135,6 +139,7 @@ export function CommandPalette() {
                         initial="hidden"
                         animate="visible"
                         onClick={() => selectNote(note)}
+                        data-note-item
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.99 }}
                         className={cn(
@@ -186,14 +191,6 @@ export function CommandPalette() {
             </kbd>
             Quick Capture
           </span>
-          {seedNotes && (
-            <button
-              onClick={() => seedNotes()}
-              className="flex cursor-pointer items-center gap-2 rounded border border-border bg-surface-elevated px-2 py-0.5 transition-colors hover:bg-surface-hover"
-            >
-              🌱 Seed 30 notes
-            </button>
-          )}
         </div>
       </div>
     </div>

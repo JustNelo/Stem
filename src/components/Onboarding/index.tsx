@@ -69,10 +69,11 @@ export function Onboarding() {
   };
 
   return (
-    <div className="flex h-screen w-screen items-center justify-center bg-surface">
+    <div className="flex min-h-screen w-screen flex-col overflow-y-auto bg-surface pt-10">
       <div className="texture-overlay pointer-events-none fixed inset-0 z-50" />
+      <div className="theme-effect pointer-events-none fixed inset-0 z-0" />
 
-      <div className="relative z-10 w-full max-w-lg px-6">
+      <div className="relative z-10 m-auto w-full max-w-lg px-6 py-12">
         {/* Progress bar */}
         <div className="mb-8 flex items-center gap-2">
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
@@ -89,7 +90,7 @@ export function Onboarding() {
         </div>
 
         {/* Step content */}
-        <div className="relative min-h-[360px] overflow-hidden">
+        <div className="relative min-h-[340px]">
           <AnimatePresence mode="wait" custom={direction}>
             {step === 0 && (
               <StepWrapper key="step-0" direction={direction}>
@@ -175,7 +176,7 @@ function StepWrapper({
       animate="center"
       exit="exit"
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="absolute inset-0"
+      className="w-full"
     >
       {children}
     </motion.div>

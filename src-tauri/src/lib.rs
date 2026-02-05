@@ -3,7 +3,7 @@ mod db;
 mod ollama;
 
 use commands::{
-    create_note, delete_note, get_all_notes, get_note, init_database, update_note, seed_notes,
+    create_note, delete_note, get_all_notes, get_note, init_database, update_note,
     create_tag, get_all_tags, update_tag, delete_tag, add_tag_to_note, remove_tag_from_note, get_tags_for_note,
     export_all_data, import_all_data,
 };
@@ -16,6 +16,8 @@ use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut}
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir().expect("Failed to get app data dir");
@@ -80,7 +82,6 @@ pub fn run() {
             update_note,
             delete_note,
             summarize_note,
-            seed_notes,
             create_tag,
             get_all_tags,
             update_tag,

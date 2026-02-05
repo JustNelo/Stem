@@ -13,7 +13,6 @@ interface NotesState {
   updateNote: (id: string, updates: { title?: string; content?: string }) => Promise<Note | null>;
   deleteNote: (id: string) => Promise<void>;
   selectNote: (note: Note | null) => void;
-  seedNotes: () => Promise<Note[] | null>;
 }
 
 export const useNotesStore = create<NotesState>((set) => ({
@@ -96,14 +95,4 @@ export const useNotesStore = create<NotesState>((set) => ({
     set({ selectedNote: note });
   },
 
-  seedNotes: async () => {
-    try {
-      const seededNotes = await invoke<Note[]>("seed_notes");
-      set((state) => ({ notes: [...seededNotes, ...state.notes] }));
-      return seededNotes;
-    } catch (error) {
-      console.error("Failed to seed notes:", error);
-      return null;
-    }
-  },
 }));

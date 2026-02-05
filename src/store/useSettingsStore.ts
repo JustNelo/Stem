@@ -26,6 +26,7 @@ interface SettingsState {
   setOllamaUrl: (url: string) => void;
   completeOnboarding: () => void;
   resetSettings: () => void;
+  resetOnboarding: () => void;
 }
 
 const DEFAULT_SETTINGS = {
@@ -75,6 +76,13 @@ export const useSettingsStore = create<SettingsState>()(
         document.documentElement.style.removeProperty("--font-sans");
         document.documentElement.style.removeProperty("--font-size-base");
         set({ ...DEFAULT_SETTINGS, hasCompletedOnboarding, userName });
+      },
+
+      resetOnboarding: () => {
+        document.documentElement.setAttribute("data-theme", DEFAULT_SETTINGS.theme);
+        document.documentElement.style.removeProperty("--font-sans");
+        document.documentElement.style.removeProperty("--font-size-base");
+        set({ ...DEFAULT_SETTINGS });
       },
     }),
     {
