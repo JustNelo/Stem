@@ -5,7 +5,7 @@ mod ollama;
 use commands::{create_note, delete_note, get_all_notes, get_note, init_database, update_note};
 use db::Database;
 use ollama::summarize_note;
-use tauri::{Emitter, Manager};
+use tauri::Manager;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -27,11 +27,32 @@ pub fn run() {
             let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyN);
             let app_handle = app.handle().clone();
             
+            // Unregister if already registered (from previous session)
+            let _ = app.global_shortcut().unregister(shortcut);
+            
             app.global_shortcut().on_shortcut(shortcut, move |_app, _shortcut, _event| {
-                if let Some(window) = app_handle.get_webview_window("main") {
+                use tauri::WebviewWindowBuilder;
+                use tauri::WebviewUrl;
+                
+                // Check if quick-capture window already exists
+                if let Some(window) = app_handle.get_webview_window("quick-capture") {
                     let _ = window.show();
                     let _ = window.set_focus();
-                    let _ = window.emit("quick-capture", ());
+                } else {
+                    // Create new quick-capture window
+                    let _ = WebviewWindowBuilder::new(
+                        &app_handle,
+                        "quick-capture",
+                        WebviewUrl::App("index.html".into())
+                    )
+                    .title("Quick Capture")
+                    .inner_size(420.0, 280.0)
+                    .resizable(false)
+                    .decorations(false)
+                    .always_on_top(true)
+                    .center()
+                    .skip_taskbar(true)
+                    .build();
                 }
             })?;
 

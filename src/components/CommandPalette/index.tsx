@@ -82,36 +82,30 @@ export function CommandPalette({
   }, [filteredNotes, selectedIndex, totalItems, onSelectNote, onCreateNote]);
 
   return (
-    <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden">
-      {/* Background gradient glow */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-zinc-900 via-black to-black" />
-      
-      {/* Noise texture */}
-      <div className="noise absolute inset-0" />
+    <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden bg-surface pt-10">
+      {/* Subtle texture overlay */}
+      <div className="texture-overlay pointer-events-none absolute inset-0" />
 
       {/* Decorative title */}
-      <h1 className="pointer-events-none absolute top-1/4 select-none text-[12rem] font-black uppercase leading-none tracking-tight text-zinc-900">
+      <h1 className="pointer-events-none absolute top-1/4 select-none text-[12rem] font-black uppercase leading-none tracking-tighter text-border opacity-40">
         STEM
       </h1>
 
       {/* Command palette card */}
       <div className="relative w-full max-w-xl px-4">
-        {/* Glow effect behind card */}
-        <div className="absolute -inset-4 rounded-3xl bg-white/5 blur-3xl" />
-
-        <div className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl">
+        <div className="relative overflow-hidden rounded-lg border border-border bg-surface-elevated shadow-lg">
           {/* Search input */}
-          <div className="flex items-center border-b border-zinc-800/50 px-4 py-4">
-            <SearchIcon className="h-5 w-5 text-zinc-500" />
+          <div className="flex items-center border-b border-border px-4 py-4">
+            <SearchIcon className="h-5 w-5 text-text-muted" />
             <input
               ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Rechercher ou demander à l'IA..."
-              className="w-full bg-transparent px-4 font-sans text-white outline-none placeholder:text-zinc-700"
+              placeholder="Rechercher une note..."
+              className="w-full bg-transparent px-4 font-sans text-text outline-none placeholder:text-text-ghost"
             />
-            <kbd className="rounded border border-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-600">
+            <kbd className="rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[10px] text-text-muted">
               ESC
             </kbd>
           </div>
@@ -119,14 +113,14 @@ export function CommandPalette({
           {/* Results */}
           <div className="max-h-80 overflow-y-auto p-2">
             {isLoading ? (
-              <div className="px-4 py-8 text-center text-sm text-zinc-600">
+              <div className="px-4 py-8 text-center text-sm text-text-muted">
                 Chargement...
               </div>
             ) : (
               <>
                 {filteredNotes.length > 0 && (
                   <div>
-                    <div className="px-2 py-2 font-mono text-[10px] uppercase tracking-widest text-zinc-600">
+                    <div className="px-2 py-2 font-mono text-[10px] uppercase tracking-widest text-text-muted">
                       Récents
                     </div>
                     {filteredNotes.map((note, index) => (
@@ -140,23 +134,23 @@ export function CommandPalette({
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.99 }}
                         className={cn(
-                          "group flex w-full cursor-pointer items-center justify-between rounded-lg p-3 transition-colors duration-150",
+                          "group flex w-full cursor-pointer items-center justify-between rounded-lg p-3 transition-all duration-200",
                           selectedIndex === index
-                            ? "bg-zinc-900"
-                            : "hover:bg-zinc-900/50"
+                            ? "bg-surface-hover"
+                            : "hover:bg-surface-hover"
                         )}
                       >
                         <span
                           className={cn(
-                            "text-sm transition-colors duration-150",
+                            "text-sm transition-colors duration-200",
                             selectedIndex === index
-                              ? "text-white"
-                              : "text-zinc-400 group-hover:text-white"
+                              ? "text-text"
+                              : "text-text-secondary group-hover:text-text"
                           )}
                         >
                           {note.title || "Sans titre"}
                         </span>
-                        <span className="font-mono text-xs text-zinc-700">
+                        <span className="font-mono text-xs text-text-muted">
                           NOTE
                         </span>
                       </motion.button>
@@ -164,58 +158,29 @@ export function CommandPalette({
                   </div>
                 )}
 
-                <div className="mt-2">
-                  <div className="px-2 py-2 font-mono text-[10px] uppercase tracking-widest text-zinc-600">
-                    Actions IA
+                {filteredNotes.length === 0 && (
+                  <div className="px-4 py-8 text-center text-sm text-text-muted">
+                    Aucune note trouvée
                   </div>
-                  {aiActions.map((action, index) => (
-                    <motion.button
-                      key={action.id}
-                      custom={filteredNotes.length + index}
-                      variants={listItemVariants}
-                      initial="hidden"
-                      animate="visible"
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
-                      className={cn(
-                        "group flex w-full cursor-pointer items-center gap-3 rounded-lg p-3 transition-colors duration-150",
-                        selectedIndex === filteredNotes.length + index
-                          ? "bg-zinc-900"
-                          : "hover:bg-zinc-900/50"
-                      )}
-                    >
-                      <span className="text-purple-400">{action.icon}</span>
-                      <span
-                        className={cn(
-                          "text-sm transition-colors duration-150",
-                          selectedIndex === filteredNotes.length + index
-                            ? "text-purple-300"
-                            : "text-purple-400/80 group-hover:text-purple-300"
-                        )}
-                      >
-                        {action.label}
-                      </span>
-                    </motion.button>
-                  ))}
-                </div>
+                )}
               </>
             )}
           </div>
         </div>
 
         {/* Footer shortcuts */}
-        <div className="mt-6 flex items-center justify-center gap-8 font-mono text-[10px] uppercase tracking-widest text-zinc-600">
+        <div className="mt-6 flex items-center justify-center gap-8 font-mono text-[10px] uppercase tracking-widest text-text-muted">
           <span className="flex items-center gap-2">
-            <kbd className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5">
-              ⌘K
-            </kbd>
-            Commandes
-          </span>
-          <span className="flex items-center gap-2">
-            <kbd className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5">
-              ⌘N
+            <kbd className="rounded border border-border bg-surface-elevated px-1.5 py-0.5">
+              Ctrl+N
             </kbd>
             Nouvelle Note
+          </span>
+          <span className="flex items-center gap-2">
+            <kbd className="rounded border border-border bg-surface-elevated px-1.5 py-0.5">
+              Ctrl+Shift+N
+            </kbd>
+            Quick Capture
           </span>
         </div>
       </div>
