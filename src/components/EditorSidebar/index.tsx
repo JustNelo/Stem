@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { Plus } from "lucide-react";
 import { useNotesStore } from "@/store/useNotesStore";
 import { cn } from "@/lib";
 import { formatRelativeTime } from "@/lib/format";
@@ -75,7 +76,7 @@ export function EditorSidebar({ isOpen, onToggle }: EditorSidebarProps) {
                   whileTap={{ scale: 0.95 }}
                   className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-900 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
                 >
-                  <PlusIcon className="h-4 w-4" />
+                  <Plus className="h-4 w-4" />
                 </motion.button>
               </div>
 
@@ -132,24 +133,6 @@ export function EditorSidebar({ isOpen, onToggle }: EditorSidebarProps) {
         )}
       </AnimatePresence>
     </>
-  );
-}
-
-function PlusIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M12 4v16m8-8H4"
-      />
-    </svg>
   );
 }
 

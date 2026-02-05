@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
+import { Search } from "lucide-react";
 import { useNotesStore } from "@/store/useNotesStore";
+import { useSettingsStore } from "@/store/useSettingsStore";
 import { cn } from "@/lib";
 
 const listItemVariants = {
@@ -16,6 +18,7 @@ const listItemVariants = {
 
 export function CommandPalette() {
   const { notes, selectNote, createNote, seedNotes, isLoading } = useNotesStore();
+  const { userName } = useSettingsStore();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -71,6 +74,8 @@ export function CommandPalette() {
     <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden bg-surface pt-10">
       {/* Subtle texture overlay */}
       <div className="texture-overlay pointer-events-none absolute inset-0" />
+      {/* Theme visual effect */}
+      <div className="theme-effect pointer-events-none absolute inset-0" />
 
       {/* Giant background logo */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -79,12 +84,23 @@ export function CommandPalette() {
         </h1>
       </div>
 
+      {/* Personalized greeting */}
+      {userName && (
+        <motion.p
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative z-10 mb-6 font-mono text-[10px] uppercase tracking-widest text-text-muted"
+        >
+          Bonjour, {userName}
+        </motion.p>
+      )}
+
       {/* Command palette card */}
       <div className="relative z-10 w-full max-w-xl px-4">
         <div className="relative overflow-hidden rounded-lg border border-border bg-surface-elevated shadow-lg">
           {/* Search input */}
           <div className="flex items-center border-b border-border px-4 py-4">
-            <SearchIcon className="h-5 w-5 text-text-muted" />
+            <Search size={20} className="text-text-muted" />
             <input
               ref={inputRef}
               type="text"
@@ -181,24 +197,6 @@ export function CommandPalette() {
         </div>
       </div>
     </div>
-  );
-}
-
-function SearchIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-      />
-    </svg>
   );
 }
 

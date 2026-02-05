@@ -1,6 +1,7 @@
 import { useNotesStore } from "@/store/useNotesStore";
 import { cn, formatDate } from "@/lib";
-import { Button, IconButton, PlusIcon, TrashIcon } from "@/components/ui";
+import { Button, IconButton } from "@/components/ui";
+import { Plus, Trash2 } from "lucide-react";
 import type { Note } from "@/types";
 
 interface SidebarProps {
@@ -19,7 +20,7 @@ export function Sidebar({ isCollapsed }: SidebarProps) {
           Notes
         </span>
         <Button onClick={() => createNote()} size="sm">
-          <PlusIcon className="mr-1 h-3 w-3" />
+          <Plus className="mr-1 h-3 w-3" />
           New
         </Button>
       </div>
@@ -82,7 +83,7 @@ function NoteItem({ note, isSelected, onSelect, onDelete }: NoteItemProps) {
           </p>
         </div>
         <IconButton
-          icon={<TrashIcon />}
+          icon={<Trash2 />}
           label="Delete"
           size="sm"
           onClick={(e) => {

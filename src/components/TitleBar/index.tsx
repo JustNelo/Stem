@@ -1,13 +1,15 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { motion, AnimatePresence } from "framer-motion";
+import { Minus, Square, X, Settings } from "lucide-react";
 
 export type SaveStatus = "idle" | "saving" | "saved";
 
 interface TitleBarProps {
   saveStatus?: SaveStatus;
+  onOpenSettings?: () => void;
 }
 
-export function TitleBar({ saveStatus = "idle" }: TitleBarProps) {
+export function TitleBar({ saveStatus = "idle", onOpenSettings }: TitleBarProps) {
   const appWindow = getCurrentWindow();
 
   const handleMinimize = async () => {
@@ -78,8 +80,26 @@ export function TitleBar({ saveStatus = "idle" }: TitleBarProps) {
         </AnimatePresence>
       </div>
 
-      {/* Right side - Window controls */}
+      {/* Right side - Settings + Window controls */}
       <div className="flex items-center gap-1 pr-3">
+        {onOpenSettings && (
+          <motion.button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenSettings();
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="flex h-6 w-6 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            aria-label="Settings"
+            title="Paramètres (Ctrl+,)"
+          >
+            <Settings size={11} />
+          </motion.button>
+        )}
+
+        <div className="mx-1 h-3 w-px bg-border" />
         <motion.button
           onClick={(e) => {
             e.stopPropagation();
@@ -91,15 +111,7 @@ export function TitleBar({ saveStatus = "idle" }: TitleBarProps) {
           whileTap={{ scale: 0.95 }}
           aria-label="Minimize"
         >
-          <svg
-            width="10"
-            height="2"
-            viewBox="0 0 10 2"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <rect width="10" height="2" rx="1" fill="currentColor" />
-          </svg>
+          <Minus size={10} />
         </motion.button>
 
         <motion.button
@@ -113,23 +125,7 @@ export function TitleBar({ saveStatus = "idle" }: TitleBarProps) {
           whileTap={{ scale: 0.95 }}
           aria-label="Maximize"
         >
-          <svg
-            width="10"
-            height="10"
-            viewBox="0 0 10 10"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <rect
-              x="0.5"
-              y="0.5"
-              width="9"
-              height="9"
-              rx="1.5"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            />
-          </svg>
+          <Square size={10} />
         </motion.button>
 
         <motion.button
@@ -143,20 +139,7 @@ export function TitleBar({ saveStatus = "idle" }: TitleBarProps) {
           whileTap={{ scale: 0.95 }}
           aria-label="Close"
         >
-          <svg
-            width="10"
-            height="10"
-            viewBox="0 0 10 10"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M1 1L9 9M9 1L1 9"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
+          <X size={10} />
         </motion.button>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { Plus, ChevronLeft, Trash2, ArrowDownAZ, CalendarArrowDown, Menu } from "lucide-react";
 import { useNotesStore } from "@/store/useNotesStore";
 import { formatRelativeTime } from "@/lib/format";
 import { AISidebar } from "@/components/AISidebar";
@@ -53,6 +54,8 @@ export function Layout({
     <div className="relative flex h-screen w-screen overflow-hidden bg-surface">
       {/* Subtle texture overlay */}
       <div className="texture-overlay pointer-events-none fixed inset-0 z-50" />
+      {/* Theme visual effect */}
+      <div className="theme-effect pointer-events-none fixed inset-0 z-0" />
 
       {/* Fixed sidebar */}
       {showSidebar && (
@@ -78,14 +81,9 @@ export function Layout({
                   title={sortBy === "date" ? "Trier par titre" : "Trier par date"}
                 >
                   {sortBy === "date" ? (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M4 6h16M4 12h16M4 18h16"/>
-                      <path d="M8 3v3M8 18v3"/>
-                    </svg>
+                    <CalendarArrowDown size={14} />
                   ) : (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M4 6h16M4 12h10M4 18h6"/>
-                    </svg>
+                    <ArrowDownAZ size={14} />
                   )}
                 </button>
                 <motion.button
@@ -95,20 +93,7 @@ export function Layout({
                   whileTap={{ scale: 0.95 }}
                   aria-label="New note"
                 >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 14 14"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M7 1V13M1 7H13"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                      />
-                    </svg>
+                    <Plus size={14} />
                   </motion.button>
                 <motion.button
                   onClick={() => setIsSidebarOpen(false)}
@@ -117,9 +102,7 @@ export function Layout({
                   whileTap={{ scale: 0.95 }}
                   aria-label="Close sidebar"
                 >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M9 3L5 7L9 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                  <ChevronLeft size={14} />
                 </motion.button>
               </div>
             </div>
@@ -167,9 +150,7 @@ export function Layout({
                         className="mr-2 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
                         title="Supprimer"
                       >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                        </svg>
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   ))}
@@ -191,9 +172,7 @@ export function Layout({
           className="fixed left-3 top-14 z-30 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-border bg-surface-elevated text-text-muted shadow-sm transition-colors hover:bg-surface-hover hover:text-text"
           title="Open sidebar (B)"
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M2 4H14M2 8H10M2 12H14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
+          <Menu size={16} />
         </motion.button>
       )}
 

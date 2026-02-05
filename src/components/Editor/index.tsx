@@ -4,16 +4,22 @@ import "./editor.css";
 
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
+import { useSettingsStore } from "@/store/useSettingsStore";
 
 interface EditorProps {
   initialContent?: string;
   onChange?: (content: string) => void;
 }
 
+const DARK_THEMES = new Set(["dark", "nord", "ocean"]);
+
 export function Editor({ initialContent, onChange }: EditorProps) {
+  const { theme } = useSettingsStore();
   const editor = useCreateBlockNote({
     initialContent: initialContent ? JSON.parse(initialContent) : undefined,
   });
+
+  const editorTheme = DARK_THEMES.has(theme) ? "dark" : "light";
 
   const handleChange = () => {
     if (onChange) {
@@ -24,7 +30,7 @@ export function Editor({ initialContent, onChange }: EditorProps) {
 
   return (
     <div className="editor-wrapper">
-      <BlockNoteView editor={editor} onChange={handleChange} theme="dark" />
+      <BlockNoteView editor={editor} onChange={handleChange} theme={editorTheme} />
     </div>
   );
 }

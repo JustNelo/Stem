@@ -1,6 +1,6 @@
 import { cn } from "@/lib";
-import { Input } from "@/components/ui";
-import { IconButton, MenuIcon, CheckIcon, LoaderIcon } from "@/components/ui";
+import { Input, IconButton } from "@/components/ui";
+import { Menu, Check, Loader } from "lucide-react";
 
 type SaveStatus = "idle" | "saving" | "saved";
 
@@ -22,7 +22,7 @@ export function Header({
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b-2 border-border-light px-3">
       <IconButton
-        icon={<MenuIcon />}
+        icon={<Menu />}
         label="Toggle sidebar"
         onClick={onToggleSidebar}
         size="sm"
@@ -58,12 +58,12 @@ function SaveIndicator({ status }: { status: SaveStatus }) {
     >
       {status === "saving" ? (
         <>
-          <LoaderIcon className="h-3 w-3 animate-spin" />
+          <Loader className="h-3 w-3 animate-spin" />
           <span>Saving...</span>
         </>
       ) : (
         <>
-          <CheckIcon className="h-3 w-3" />
+          <Check className="h-3 w-3" />
           <span>Saved</span>
         </>
       )}

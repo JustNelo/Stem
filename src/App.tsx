@@ -1,6 +1,7 @@
 import { useCallback, useState, useEffect } from "react";
 import { MantineProvider } from "@mantine/core";
 import { motion, AnimatePresence } from "framer-motion";
+import { ChevronLeft } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import "@mantine/core/styles.css";
@@ -11,8 +12,15 @@ import { TitleBar } from "@/components/TitleBar";
 import { Layout } from "@/components/layout";
 import { QuickCapture } from "@/components/QuickCapture";
 import { useNotesStore } from "@/store/useNotesStore";
+import { useSettingsStore, applyPersistedSettings } from "@/store/useSettingsStore";
+import { Onboarding } from "@/components/Onboarding";
+import { TagPicker } from "@/components/TagPicker";
+import { Settings } from "@/components/Settings";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { countWords } from "@/lib/format";
+
+// Apply persisted settings (theme, font) to DOM on load
+applyPersistedSettings();
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -52,9 +60,10 @@ const pageTransition = {
   damping: 30,
 };
 
-type View = "home" | "editor";
+type View = "home" | "editor" | "settings";
 
 function App() {
+  const { hasCompletedOnboarding, ollamaModel, ollamaUrl } = useSettingsStore();
   const {
     selectedNote,
     createNote,
@@ -71,6 +80,7 @@ function App() {
   const [view, setView] = useState<View>("home");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isQuickCapture, setIsQuickCapture] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   // Sync view with selected note
   useEffect(() => {
@@ -123,14 +133,18 @@ function App() {
           prompt = `${args || "Analyse ce texte"}:\n\n${text}`;
       }
       
-      const result = await invoke<string>("summarize_note", { content: prompt });
+      const result = await invoke<string>("summarize_note", {
+        content: prompt,
+        model: ollamaModel,
+        ollamaUrl,
+      });
       return result || "Résultat vide.";
     } catch (error) {
       throw new Error(`${error}. Vérifiez qu'Ollama est lancé.`);
     } finally {
       setIsProcessing(false);
     }
-  }, [selectedNote]);
+  }, [selectedNote, ollamaModel, ollamaUrl]);
 
   const handleBack = useCallback(() => {
     setView("home");
@@ -238,9 +252,28 @@ function App() {
     );
   }
 
+  // Render Onboarding on first launch
+  if (!hasCompletedOnboarding) {
+    return (
+      <MantineProvider>
+        <Onboarding />
+      </MantineProvider>
+    );
+  }
+
+  // Render Settings as overlay
+  if (showSettings) {
+    return (
+      <MantineProvider>
+        <TitleBar saveStatus={saveStatus} />
+        <Settings onClose={() => setShowSettings(false)} />
+      </MantineProvider>
+    );
+  }
+
   return (
     <MantineProvider>
-      <TitleBar saveStatus={saveStatus} />
+      <TitleBar saveStatus={saveStatus} onOpenSettings={() => setShowSettings(true)} />
       
       <AnimatePresence mode="wait">
         {view === "home" ? (
@@ -279,9 +312,7 @@ function App() {
                   whileHover={{ x: -2 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                    <path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                  <ChevronLeft size={12} />
                   <span className="font-mono text-[10px] uppercase tracking-widest leading-none">Retour</span>
                 </motion.button>
 
@@ -294,6 +325,11 @@ function App() {
                   className="w-full bg-transparent font-semibold tracking-tight text-text outline-none placeholder:text-text-ghost"
                   style={{ fontSize: "3rem" }}
                 />
+
+                {/* Tags */}
+                {selectedNote && (
+                  <TagPicker noteId={selectedNote.id} />
+                )}
 
                 {/* Metadata bar */}
                 <div className="font-mono text-[10px] uppercase tracking-widest text-text-muted">

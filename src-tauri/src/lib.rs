@@ -2,9 +2,13 @@ mod commands;
 mod db;
 mod ollama;
 
-use commands::{create_note, delete_note, get_all_notes, get_note, init_database, update_note, seed_notes};
+use commands::{
+    create_note, delete_note, get_all_notes, get_note, init_database, update_note, seed_notes,
+    create_tag, get_all_tags, update_tag, delete_tag, add_tag_to_note, remove_tag_from_note, get_tags_for_note,
+    export_all_data, import_all_data,
+};
 use db::Database;
-use ollama::summarize_note;
+use ollama::{summarize_note, check_ollama_connection, get_ollama_models};
 use tauri::{Manager, Emitter};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
@@ -76,7 +80,18 @@ pub fn run() {
             update_note,
             delete_note,
             summarize_note,
-            seed_notes
+            seed_notes,
+            create_tag,
+            get_all_tags,
+            update_tag,
+            delete_tag,
+            add_tag_to_note,
+            remove_tag_from_note,
+            get_tags_for_note,
+            check_ollama_connection,
+            get_ollama_models,
+            export_all_data,
+            import_all_data
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
