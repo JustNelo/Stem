@@ -18,7 +18,7 @@ interface LayoutProps {
   onSummarize?: () => void;
 }
 
-const SIDEBAR_WIDTH = 256; // 16rem = 256px
+const SIDEBAR_WIDTH = 256;
 
 export function Layout({
   children,
@@ -34,6 +34,8 @@ export function Layout({
 }: LayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAISidebarOpen, setIsAISidebarOpen] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"date" | "title">("date");
 
   // Keyboard shortcuts: B for notes sidebar, L for AI sidebar
   useEffect(() => {
@@ -81,10 +83,26 @@ export function Layout({
                 Notes
               </h2>
               <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setSortBy(sortBy === "date" ? "title" : "date")}
+                  className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
+                  title={sortBy === "date" ? "Trier par titre" : "Trier par date"}
+                >
+                  {sortBy === "date" ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 6h16M4 12h16M4 18h16"/>
+                      <path d="M8 3v3M8 18v3"/>
+                    </svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 6h16M4 12h10M4 18h6"/>
+                    </svg>
+                  )}
+                </button>
                 {onCreateNote && (
                   <motion.button
                     onClick={onCreateNote}
-                    className="flex h-6 w-6 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-hover hover:text-text"
+                    className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-hover hover:text-text"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     aria-label="New note"
@@ -107,7 +125,7 @@ export function Layout({
                 )}
                 <motion.button
                   onClick={() => setIsSidebarOpen(false)}
-                  className="flex h-6 w-6 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
+                  className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   aria-label="Close sidebar"
@@ -127,7 +145,14 @@ export function Layout({
                 </div>
               ) : (
                 <div className="space-y-0.5">
-                  {notes.map((note) => (
+                  {[...notes]
+                    .sort((a, b) => {
+                      if (sortBy === "title") {
+                        return (a.title || "Sans titre").localeCompare(b.title || "Sans titre");
+                      }
+                      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+                    })
+                    .map((note) => (
                     <div
                       key={note.id}
                       className={`group relative flex w-full items-center rounded-lg transition-colors ${
@@ -138,9 +163,9 @@ export function Layout({
                     >
                       <button
                         onClick={() => onSelectNote?.(note)}
-                        className="flex-1 px-3 py-2 text-left"
+                        className="flex-1 cursor-pointer px-3 py-2 text-left"
                       >
-                        <div className="mb-0.5 truncate text-sm font-medium tracking-tight text-text">
+                        <div className="mb-1 truncate text-sm font-medium tracking-tight text-text">
                           {note.title || "Sans titre"}
                         </div>
                         <div className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
@@ -150,9 +175,9 @@ export function Layout({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onDeleteNote?.(note.id);
+                          setNoteToDelete(note.id);
                         }}
-                        className="mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+                        className="mr-2 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
                         title="Supprimer"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -176,7 +201,7 @@ export function Layout({
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -10 }}
           onClick={() => setIsSidebarOpen(true)}
-          className="fixed left-3 top-14 z-30 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface-elevated text-text-muted shadow-sm transition-colors hover:bg-surface-hover hover:text-text"
+          className="fixed left-3 top-14 z-30 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-border bg-surface-elevated text-text-muted shadow-sm transition-colors hover:bg-surface-hover hover:text-text"
           title="Open sidebar (B)"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -197,7 +222,7 @@ export function Layout({
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 10 }}
           onClick={() => setIsAISidebarOpen(true)}
-          className="fixed right-3 top-14 z-30 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface-elevated text-text-muted shadow-sm transition-colors hover:bg-surface-hover hover:text-text"
+          className="fixed right-3 top-14 z-30 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-border bg-surface-elevated text-text-muted shadow-sm transition-colors hover:bg-surface-hover hover:text-text"
           title="Open AI panel (L)"
         >
           <span className="text-sm">✦</span>
@@ -212,6 +237,47 @@ export function Layout({
         isSummarizing={isSummarizing}
         onSummarize={onSummarize || (() => {})}
       />
+
+      {/* Delete confirmation modal */}
+      {noteToDelete && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-text/20 backdrop-blur-sm"
+          onClick={() => setNoteToDelete(null)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-lg border border-border bg-surface-elevated p-6 shadow-xl"
+          >
+            <h3 className="mb-2 text-lg font-semibold text-text">Supprimer cette note ?</h3>
+            <p className="mb-6 text-sm text-text-secondary">
+              Cette action est irréversible.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setNoteToDelete(null)}
+                className="flex-1 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-text transition-colors hover:bg-surface-hover"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => {
+                  onDeleteNote?.(noteToDelete);
+                  setNoteToDelete(null);
+                }}
+                className="flex-1 rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600"
+              >
+                Supprimer
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 }

@@ -30,20 +30,20 @@ export function AISidebar({
       <div className="flex h-full w-80 flex-col">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <div className="flex items-center gap-2">
-            <span className="text-text-secondary">✦</span>
-            <h2 className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+          <div className="flex items-center gap-2 leading-none">
+            <span className="text-text-secondary leading-nonel">✦</span>
+            <h2 className="font-mono text-[10px] uppercase tracking-widest text-text-muted leading-none">
               Intelligence
             </h2>
           </div>
           <motion.button
             onClick={onClose}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
+            className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             aria-label="Close AI panel"
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path
                 d="M5 3L9 7L5 11"
                 stroke="currentColor"

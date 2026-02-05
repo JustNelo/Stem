@@ -76,6 +76,17 @@ export function useNotes() {
     setSelectedNote(note);
   }, []);
 
+  const seedNotes = useCallback(async () => {
+    try {
+      const seededNotes = await invoke<Note[]>("seed_notes");
+      setNotes((prev) => [...seededNotes, ...prev]);
+      return seededNotes;
+    } catch (error) {
+      console.error("Failed to seed notes:", error);
+      return null;
+    }
+  }, []);
+
   return {
     notes,
     selectedNote,
@@ -85,5 +96,6 @@ export function useNotes() {
     deleteNote,
     selectNote,
     refreshNotes: fetchNotes,
+    seedNotes,
   };
 }

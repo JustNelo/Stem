@@ -21,6 +21,7 @@ interface CommandPaletteProps {
   notes: Note[];
   onSelectNote: (note: Note) => void;
   onCreateNote: () => void;
+  onSeedNotes?: () => void;
   isLoading: boolean;
 }
 
@@ -28,6 +29,7 @@ export function CommandPalette({
   notes,
   onSelectNote,
   onCreateNote,
+  onSeedNotes,
   isLoading,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
@@ -184,6 +186,14 @@ export function CommandPalette({
             </kbd>
             Quick Capture
           </span>
+          {onSeedNotes && (
+            <button
+              onClick={onSeedNotes}
+              className="flex cursor-pointer items-center gap-2 rounded border border-border bg-surface-elevated px-2 py-0.5 transition-colors hover:bg-surface-hover"
+            >
+              🌱 Seed 30 notes
+            </button>
+          )}
         </div>
       </div>
     </div>

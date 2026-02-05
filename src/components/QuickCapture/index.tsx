@@ -22,6 +22,8 @@ export function QuickCapture({ onSave }: QuickCaptureProps) {
     setIsSaving(true);
     try {
       await onSave(content.trim());
+      // Show success feedback before closing
+      await new Promise(resolve => setTimeout(resolve, 300));
       await handleClose();
     } catch (e) {
       console.error("Save failed:", e);
@@ -103,13 +105,21 @@ export function QuickCapture({ onSave }: QuickCaptureProps) {
       {/* Saving overlay */}
       {isSaving && (
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="absolute inset-0 flex items-center justify-center bg-surface/80"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="absolute inset-0 flex items-center justify-center bg-surface/90 backdrop-blur-sm"
         >
-          <span className="font-mono text-xs uppercase tracking-widest text-text-muted">
-            Saving...
-          </span>
+          <motion.div
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="flex flex-col items-center gap-2"
+          >
+            <div className="text-2xl">✓</div>
+            <span className="font-mono text-xs uppercase tracking-widest text-text">
+              Sauvegardé
+            </span>
+          </motion.div>
         </motion.div>
       )}
     </div>

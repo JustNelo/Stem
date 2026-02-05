@@ -2,10 +2,10 @@ mod commands;
 mod db;
 mod ollama;
 
-use commands::{create_note, delete_note, get_all_notes, get_note, init_database, update_note};
+use commands::{create_note, delete_note, get_all_notes, get_note, init_database, update_note, seed_notes};
 use db::Database;
 use ollama::summarize_note;
-use tauri::Manager;
+use tauri::{Manager, AppHandle, Emitter};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -40,7 +40,7 @@ pub fn run() {
                     let _ = window.set_focus();
                 } else {
                     // Create new quick-capture window
-                    let _ = WebviewWindowBuilder::new(
+                    if let Ok(window) = WebviewWindowBuilder::new(
                         &app_handle,
                         "quick-capture",
                         WebviewUrl::App("index.html".into())
@@ -52,7 +52,17 @@ pub fn run() {
                     .always_on_top(true)
                     .center()
                     .skip_taskbar(true)
-                    .build();
+                    .build() {
+                        // Listen for window close to refresh main window
+                        let main_handle = app_handle.clone();
+                        window.on_window_event(move |event| {
+                            if let tauri::WindowEvent::Destroyed = event {
+                                if let Some(main_window) = main_handle.get_webview_window("main") {
+                                    let _ = main_window.emit("refresh-notes", ());
+                                }
+                            }
+                        });
+                    }
                 }
             })?;
 
@@ -65,7 +75,8 @@ pub fn run() {
             get_all_notes,
             update_note,
             delete_note,
-            summarize_note
+            summarize_note,
+            seed_notes
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

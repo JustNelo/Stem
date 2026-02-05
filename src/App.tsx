@@ -63,6 +63,7 @@ function App() {
     updateNote,
     deleteNote,
     selectNote,
+    seedNotes,
   } = useNotes();
 
   const [view, setView] = useState<View>("home");
@@ -179,6 +180,19 @@ function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [view, handleBack]);
 
+  // Listen for refresh-notes event from Quick Capture window
+  useEffect(() => {
+    const appWindow = getCurrentWindow();
+    const unlisten = appWindow.listen("refresh-notes", () => {
+      // Refresh notes list
+      window.location.reload();
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
+
 
   // Render Quick Capture mode
   if (isQuickCapture) {
@@ -208,6 +222,7 @@ function App() {
               notes={notes}
               onSelectNote={handleSelectNote}
               onCreateNote={handleCreateNote}
+              onSeedNotes={seedNotes}
               isLoading={isLoading}
             />
           </motion.div>
@@ -233,13 +248,26 @@ function App() {
               onSummarize={handleSummarize}
             >
               {/* Editor header - minimal and clean */}
-              <div className="mb-6 space-y-2">
+              <div className="mb-6 space-y-3">
+                {/* Back button */}
+                <motion.button
+                  onClick={handleBack}
+                  className="flex cursor-pointer items-center gap-2 text-text-muted transition-colors hover:text-text leading-none"
+                  whileHover={{ x: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                    <path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span className="font-mono text-[10px] uppercase tracking-widest leading-none">Retour</span>
+                </motion.button>
+
                 {/* Title input */}
                 <input
                   type="text"
                   value={selectedNote?.title || ""}
                   onChange={handleTitleChange}
-                  placeholder="Sans titre"
+                  placeholder="Commencez à écrire..."
                   className="w-full bg-transparent font-semibold tracking-tight text-text outline-none placeholder:text-text-ghost"
                   style={{ fontSize: "3rem", lineHeight: 1.1 }}
                 />
@@ -247,7 +275,11 @@ function App() {
                 {/* Metadata bar */}
                 <div className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
                   {selectedNote && (
-                    <span>{countWords(selectedNote.content)} mots</span>
+                    <>
+                      <span>{countWords(selectedNote.content)} mots</span>
+                      <span className="mx-2">•</span>
+                      <span>~{Math.max(1, Math.ceil(countWords(selectedNote.content) / 200))} min</span>
+                    </>
                   )}
                 </div>
               </div>
