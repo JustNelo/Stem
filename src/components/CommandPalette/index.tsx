@@ -1,6 +1,21 @@
 import { useState, useRef, useEffect } from "react";
+import { motion } from "framer-motion";
 import type { Note } from "../../types";
 import { cn } from "../../lib";
+
+const listItemVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: (i: number) => ({
+    opacity: 1,
+    x: 0,
+    transition: {
+      delay: i * 0.05,
+      type: "spring" as const,
+      stiffness: 300,
+      damping: 24,
+    },
+  }),
+};
 
 interface CommandPaletteProps {
   notes: Note[];
@@ -69,7 +84,7 @@ export function CommandPalette({
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden">
       {/* Background gradient glow */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-zinc-900 via-black to-black" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-zinc-900 via-black to-black" />
       
       {/* Noise texture */}
       <div className="noise absolute inset-0" />
@@ -115,9 +130,15 @@ export function CommandPalette({
                       Récents
                     </div>
                     {filteredNotes.map((note, index) => (
-                      <button
+                      <motion.button
                         key={note.id}
+                        custom={index}
+                        variants={listItemVariants}
+                        initial="hidden"
+                        animate="visible"
                         onClick={() => onSelectNote(note)}
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
                         className={cn(
                           "group flex w-full cursor-pointer items-center justify-between rounded-lg p-3 transition-colors duration-150",
                           selectedIndex === index
@@ -138,7 +159,7 @@ export function CommandPalette({
                         <span className="font-mono text-xs text-zinc-700">
                           NOTE
                         </span>
-                      </button>
+                      </motion.button>
                     ))}
                   </div>
                 )}
@@ -148,8 +169,14 @@ export function CommandPalette({
                     Actions IA
                   </div>
                   {aiActions.map((action, index) => (
-                    <button
+                    <motion.button
                       key={action.id}
+                      custom={filteredNotes.length + index}
+                      variants={listItemVariants}
+                      initial="hidden"
+                      animate="visible"
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
                       className={cn(
                         "group flex w-full cursor-pointer items-center gap-3 rounded-lg p-3 transition-colors duration-150",
                         selectedIndex === filteredNotes.length + index
@@ -168,7 +195,7 @@ export function CommandPalette({
                       >
                         {action.label}
                       </span>
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               </>
