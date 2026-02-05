@@ -67,31 +67,59 @@ function App() {
   } = useNotes();
 
   const [view, setView] = useState<View>("home");
-  const [summary, setSummary] = useState<string | null>(null);
-  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [isQuickCapture, setIsQuickCapture] = useState(false);
 
-  const handleSummarize = useCallback(async () => {
-    if (!selectedNote?.content || isSummarizing) return;
+  // Handle AI commands from Copilot sidebar
+  const handleExecuteCommand = useCallback(async (command: string, args?: string): Promise<string> => {
+    if (!selectedNote?.content) {
+      return "Aucune note sélectionnée.";
+    }
     
-    setIsSummarizing(true);
-    setSummary(null);
+    setIsProcessing(true);
     
     try {
       const text = extractTextFromContent(selectedNote.content);
       if (!text.trim()) {
-        setSummary("Aucun contenu à résumer.");
-        return;
+        return "Aucun contenu dans la note.";
+      }
+
+      // Build prompt based on command
+      let prompt = "";
+      switch (command) {
+        case "summarize":
+          prompt = `Résume ce texte de manière concise:\n\n${text}`;
+          break;
+        case "translate":
+          prompt = `Traduis ce texte en anglais:\n\n${text}`;
+          break;
+        case "correct":
+          prompt = `Corrige l'orthographe et la grammaire de ce texte, retourne uniquement le texte corrigé:\n\n${text}`;
+          break;
+        case "explain":
+          prompt = `Explique ce texte de manière simple et accessible:\n\n${text}`;
+          break;
+        case "ideas":
+          prompt = `Génère 5 idées créatives basées sur ce texte:\n\n${text}`;
+          break;
+        case "tags":
+          prompt = `Suggère 5 tags pertinents pour catégoriser ce texte (retourne uniquement les tags séparés par des virgules):\n\n${text}`;
+          break;
+        case "ask":
+          prompt = `Tu es un assistant intelligent. L'utilisateur travaille sur une note dont voici le contenu:\n\n---\n${text}\n---\n\nL'utilisateur te pose cette question: "${args}"\n\nRéponds de manière utile et concise à sa question. Si la question n'a pas de rapport avec la note, réponds quand même du mieux possible.`;
+          break;
+        default:
+          prompt = `${args || "Analyse ce texte"}:\n\n${text}`;
       }
       
-      const result = await invoke<string>("summarize_note", { content: text });
-      setSummary(result || "Résumé vide.");
+      const result = await invoke<string>("summarize_note", { content: prompt });
+      return result || "Résultat vide.";
     } catch (error) {
-      setSummary(`Erreur: ${error}. Vérifiez qu'Ollama est lancé avec le modèle mistral.`);
+      throw new Error(`${error}. Vérifiez qu'Ollama est lancé.`);
     } finally {
-      setIsSummarizing(false);
+      setIsProcessing(false);
     }
-  }, [selectedNote, isSummarizing]);
+  }, [selectedNote]);
 
   const handleSelectNote = useCallback(
     (note: typeof selectedNote) => {
@@ -243,9 +271,8 @@ function App() {
               onCreateNote={handleCreateNote}
               onDeleteNote={deleteNote}
               showSidebar={true}
-              summary={summary}
-              isSummarizing={isSummarizing}
-              onSummarize={handleSummarize}
+              onExecuteCommand={handleExecuteCommand}
+              isProcessing={isProcessing}
             >
               {/* Editor header - minimal and clean */}
               <div className="mb-6 space-y-3">

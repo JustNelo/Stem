@@ -13,9 +13,8 @@ interface LayoutProps {
   onDeleteNote?: (id: string) => void;
   showSidebar?: boolean;
   // AI Sidebar props
-  summary?: string | null;
-  isSummarizing?: boolean;
-  onSummarize?: () => void;
+  onExecuteCommand?: (command: string, args?: string) => Promise<string>;
+  isProcessing?: boolean;
 }
 
 const SIDEBAR_WIDTH = 256;
@@ -28,9 +27,8 @@ export function Layout({
   onCreateNote,
   onDeleteNote,
   showSidebar = true,
-  summary = null,
-  isSummarizing = false,
-  onSummarize,
+  onExecuteCommand,
+  isProcessing = false,
 }: LayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAISidebarOpen, setIsAISidebarOpen] = useState(false);
@@ -233,9 +231,8 @@ export function Layout({
       <AISidebar
         isOpen={isAISidebarOpen}
         onClose={() => setIsAISidebarOpen(false)}
-        summary={summary}
-        isSummarizing={isSummarizing}
-        onSummarize={onSummarize || (() => {})}
+        onExecuteCommand={onExecuteCommand || (async () => "Commande non disponible")}
+        isProcessing={isProcessing}
       />
 
       {/* Delete confirmation modal */}
