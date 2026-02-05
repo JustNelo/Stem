@@ -90,7 +90,7 @@ export function Onboarding() {
         </div>
 
         {/* Step content */}
-        <div className="relative min-h-[340px]">
+        <div className="relative min-h-85">
           <AnimatePresence mode="wait" custom={direction}>
             {step === 0 && (
               <StepWrapper key="step-0" direction={direction}>
