@@ -61,6 +61,7 @@ function App() {
     isLoading,
     createNote,
     updateNote,
+    deleteNote,
     selectNote,
   } = useNotes();
 
@@ -225,20 +226,22 @@ function App() {
               selectedNote={selectedNote}
               onSelectNote={handleSelectNote}
               onCreateNote={handleCreateNote}
+              onDeleteNote={deleteNote}
               showSidebar={true}
               summary={summary}
               isSummarizing={isSummarizing}
               onSummarize={handleSummarize}
             >
               {/* Editor header - minimal and clean */}
-              <div className="mb-8 space-y-3">
+              <div className="mb-6 space-y-2">
                 {/* Title input */}
                 <input
                   type="text"
                   value={selectedNote?.title || ""}
                   onChange={handleTitleChange}
                   placeholder="Sans titre"
-                  className="w-full bg-transparent text-4xl font-semibold tracking-tight text-text outline-none placeholder:text-text-ghost"
+                  className="w-full bg-transparent font-semibold tracking-tight text-text outline-none placeholder:text-text-ghost"
+                  style={{ fontSize: "3rem", lineHeight: 1.1 }}
                 />
 
                 {/* Metadata bar */}

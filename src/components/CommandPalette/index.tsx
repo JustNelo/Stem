@@ -86,13 +86,15 @@ export function CommandPalette({
       {/* Subtle texture overlay */}
       <div className="texture-overlay pointer-events-none absolute inset-0" />
 
-      {/* Decorative title */}
-      <h1 className="pointer-events-none absolute top-1/4 select-none text-[12rem] font-black uppercase leading-none tracking-tighter text-border opacity-40">
-        STEM
-      </h1>
+      {/* Giant background logo */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <h1 className="select-none text-[clamp(42rem,25vw,48rem)] font-black uppercase leading-none tracking-tighter text-border opacity-[0.50]">
+          STEM
+        </h1>
+      </div>
 
       {/* Command palette card */}
-      <div className="relative w-full max-w-xl px-4">
+      <div className="relative z-10 w-full max-w-xl px-4">
         <div className="relative overflow-hidden rounded-lg border border-border bg-surface-elevated shadow-lg">
           {/* Search input */}
           <div className="flex items-center border-b border-border px-4 py-4">

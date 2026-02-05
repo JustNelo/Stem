@@ -10,6 +10,7 @@ interface LayoutProps {
   selectedNote?: Note | null;
   onSelectNote?: (note: Note) => void;
   onCreateNote?: () => void;
+  onDeleteNote?: (id: string) => void;
   showSidebar?: boolean;
   // AI Sidebar props
   summary?: string | null;
@@ -25,6 +26,7 @@ export function Layout({
   selectedNote,
   onSelectNote,
   onCreateNote,
+  onDeleteNote,
   showSidebar = true,
   summary = null,
   isSummarizing = false,
@@ -126,33 +128,43 @@ export function Layout({
               ) : (
                 <div className="space-y-0.5">
                   {notes.map((note) => (
-                    <motion.button
+                    <div
                       key={note.id}
-                      onClick={() => onSelectNote?.(note)}
-                      className={`group w-full rounded-lg px-3 py-2 text-left transition-colors ${
+                      className={`group relative flex w-full items-center rounded-lg transition-colors ${
                         selectedNote?.id === note.id
                           ? "bg-surface-hover"
                           : "hover:bg-surface-hover"
                       }`}
                     >
-                      <div className="mb-0.5 truncate text-sm font-medium tracking-tight text-text">
-                        {note.title || "Sans titre"}
-                      </div>
-                      <div className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                        {formatRelativeTime(note.updated_at)}
-                      </div>
-                    </motion.button>
+                      <button
+                        onClick={() => onSelectNote?.(note)}
+                        className="flex-1 px-3 py-2 text-left"
+                      >
+                        <div className="mb-0.5 truncate text-sm font-medium tracking-tight text-text">
+                          {note.title || "Sans titre"}
+                        </div>
+                        <div className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                          {formatRelativeTime(note.updated_at)}
+                        </div>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteNote?.(note.id);
+                        }}
+                        className="mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+                        title="Supprimer"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                        </svg>
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Footer hint */}
-            <div className="border-t border-border px-4 py-2">
-              <span className="font-mono text-[9px] uppercase tracking-widest text-text-ghost">
-                <kbd className="rounded bg-surface-hover px-1">B</kbd> toggle
-              </span>
-            </div>
           </div>
         </motion.aside>
       )}
@@ -175,7 +187,7 @@ export function Layout({
 
       {/* Main content - centered with breathing room */}
       <main className="relative z-10 flex flex-1 flex-col items-center overflow-auto pt-10">
-        <div className="w-full max-w-3xl px-8 py-12">{children}</div>
+        <div className="w-full max-w-3xl px-8 py-6">{children}</div>
       </main>
 
       {/* AI Sidebar toggle button (visible when closed) */}

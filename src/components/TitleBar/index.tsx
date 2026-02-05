@@ -48,7 +48,7 @@ export function TitleBar({ saveStatus = "idle" }: TitleBarProps) {
   return (
     <div
       onMouseDown={handleDrag}
-      className="fixed left-0 right-0 top-0 z-50 flex h-10 cursor-default items-center justify-between bg-surface/80 backdrop-blur-sm"
+      className="fixed left-0 right-0 top-0 z-50 flex h-10 cursor-default items-center justify-between bg-surface border-b"
     >
       {/* Left side - App name with save indicator */}
       <div

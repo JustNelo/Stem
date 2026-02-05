@@ -132,13 +132,6 @@ export function AISidebar({
           </AnimatePresence>
         </div>
 
-        {/* Footer hint */}
-        <div className="border-t border-border px-4 py-2">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-text-ghost">
-            <kbd className="rounded bg-surface-hover px-1">L</kbd> toggle •
-            Powered by Ollama
-          </span>
-        </div>
       </div>
     </motion.aside>
   );

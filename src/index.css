@@ -1,5 +1,86 @@
 @import "tailwindcss";
 
+/* Satoshi Font Family */
+@font-face {
+  font-family: "Satoshi";
+  src: url("./assets/fonts/Satoshi-Light.woff") format("woff");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("./assets/fonts/Satoshi-LightItalic.woff") format("woff");
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("./assets/fonts/Satoshi-Regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("./assets/fonts/Satoshi-Italic.woff") format("woff");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("./assets/fonts/Satoshi-Medium.woff") format("woff");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("./assets/fonts/Satoshi-MediumItalic.woff") format("woff");
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("./assets/fonts/Satoshi-Bold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("./assets/fonts/Satoshi-BoldItalic.woff") format("woff");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("./assets/fonts/Satoshi-Black.woff") format("woff");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("./assets/fonts/Satoshi-BlackItalic.woff") format("woff");
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
+}
+
 @theme {
   /* Light theme - Clean Productivity */
   --color-surface: #fafaf9;
@@ -13,7 +94,7 @@
   --color-text-ghost: #d6d3d1;
   --color-accent: #18181b;
   
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: "Satoshi", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Consolas", monospace;
   
   /* Spacing for breathing room */
