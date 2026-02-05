@@ -19,6 +19,7 @@ import { save, open } from "@tauri-apps/plugin-dialog";
 import { writeTextFile, readTextFile } from "@tauri-apps/plugin-fs";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useNotesStore } from "@/store/useNotesStore";
+import { useToastStore } from "@/store/useToastStore";
 import { THEMES, FONTS, FONT_SIZES } from "@/types/settings";
 import type { ThemeId, FontId, FontSize } from "@/types/settings";
 import { cn } from "@/lib";
@@ -54,6 +55,7 @@ export function Settings({ onClose }: SettingsProps) {
   } = useSettingsStore();
 
   const { fetchNotes } = useNotesStore();
+  const { addToast } = useToastStore();
 
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [ollamaConnected, setOllamaConnected] = useState<boolean | null>(null);
@@ -102,12 +104,14 @@ export function Settings({ onClose }: SettingsProps) {
       await writeTextFile(filePath, data);
 
       setExportStatus("done");
+      addToast("Données exportées avec succès", "success");
       setTimeout(() => setExportStatus(null), 2000);
     } catch (error) {
       console.error("Export failed:", error);
+      addToast("Échec de l'export", "error");
       setExportStatus(null);
     }
-  }, []);
+  }, [addToast]);
 
   const handleImport = useCallback(async () => {
     try {
@@ -124,13 +128,15 @@ export function Settings({ onClose }: SettingsProps) {
       const result = await invoke<string>("import_all_data", { data: text });
       setImportStatus(result);
       fetchNotes();
+      addToast("Données importées avec succès", "success");
       setTimeout(() => setImportStatus(null), 3000);
     } catch (error) {
       console.error("Import failed:", error);
       setImportStatus(`Erreur: ${error}`);
+      addToast("Échec de l'import", "error");
       setTimeout(() => setImportStatus(null), 3000);
     }
-  }, [fetchNotes]);
+  }, [fetchNotes, addToast]);
 
   return (
     <div className="flex h-screen w-screen flex-col bg-surface pt-10">

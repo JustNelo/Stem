@@ -1,7 +1,7 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { MantineProvider } from "@mantine/core";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import "@mantine/core/styles.css";
@@ -16,6 +16,7 @@ import { useSettingsStore, applyPersistedSettings } from "@/store/useSettingsSto
 import { Onboarding } from "@/components/Onboarding";
 import { TagPicker } from "@/components/TagPicker";
 import { Settings } from "@/components/Settings";
+import { ToastContainer } from "@/components/ToastContainer";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { countWords } from "@/lib/format";
 
@@ -74,13 +75,25 @@ function App() {
 
   useEffect(() => {
     fetchNotes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [view, setView] = useState<View>("home");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isQuickCapture, setIsQuickCapture] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+
+  // Local title state to avoid re-rendering the whole tree on each keystroke
+  const [localTitle, setLocalTitle] = useState("");
+  const titleSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync local title only when switching to a different note
+  useEffect(() => {
+    setLocalTitle(selectedNote?.title || "");
+    // Cleanup any pending title save from the previous note
+    return () => {
+      if (titleSaveTimer.current) clearTimeout(titleSaveTimer.current);
+    };
+  }, [selectedNote?.id]);
 
   // Sync view with selected note
   useEffect(() => {
@@ -173,7 +186,14 @@ function App() {
   const handleTitleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!selectedNote) return;
-      updateNote(selectedNote.id, { title: e.target.value });
+      const value = e.target.value;
+      const noteId = selectedNote.id;
+      setLocalTitle(value);
+      // Debounce the actual save
+      if (titleSaveTimer.current) clearTimeout(titleSaveTimer.current);
+      titleSaveTimer.current = setTimeout(() => {
+        updateNote(noteId, { title: value });
+      }, 400);
     },
     [selectedNote, updateNote]
   );
@@ -208,6 +228,13 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Global shortcuts
+      if (e.key === "," && e.ctrlKey) {
+        e.preventDefault();
+        setShowSettings((prev) => !prev);
+        return;
+      }
+
       if (view !== "editor") return;
 
       if (e.key === "Escape") {
@@ -265,7 +292,7 @@ function App() {
   if (showSettings) {
     return (
       <MantineProvider>
-        <TitleBar saveStatus={saveStatus} />
+        <TitleBar />
         <Settings onClose={() => setShowSettings(false)} />
       </MantineProvider>
     );
@@ -273,13 +300,16 @@ function App() {
 
   return (
     <MantineProvider>
-      <TitleBar saveStatus={saveStatus} onOpenSettings={() => setShowSettings(true)} />
+      <div className="flex h-screen w-screen flex-col overflow-hidden">
+      <TitleBar onOpenSettings={() => setShowSettings(true)} />
+      <ToastContainer />
       
-      <AnimatePresence mode="wait">
+      <div className="relative flex-1 overflow-hidden">
+        <AnimatePresence mode="wait">
         {view === "home" ? (
           <motion.div
             key="home"
-            className="h-screen w-screen"
+            className="absolute inset-0"
             variants={pageVariants}
             initial="initial"
             animate="animate"
@@ -291,7 +321,7 @@ function App() {
         ) : (
           <motion.div
             key="editor"
-            className="h-screen w-screen"
+            className="absolute inset-0"
             variants={pageVariants}
             initial="initial"
             animate="animate"
@@ -300,6 +330,7 @@ function App() {
           >
             <Layout
               showSidebar={true}
+              saveStatus={saveStatus}
               onExecuteCommand={handleExecuteCommand}
               isProcessing={isProcessing}
             >
@@ -312,18 +343,17 @@ function App() {
                   whileHover={{ x: -2 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <ChevronLeft size={12} />
+                  <ArrowLeft size={10} />
                   <span className="font-mono text-[10px] uppercase tracking-widest leading-none">Retour</span>
                 </motion.button>
 
                 {/* Title input */}
                 <input
                   type="text"
-                  value={selectedNote?.title || ""}
+                  value={localTitle}
                   onChange={handleTitleChange}
                   placeholder="Commencez à écrire..."
-                  className="w-full bg-transparent font-semibold tracking-tight text-text outline-none placeholder:text-text-ghost"
-                  style={{ fontSize: "3rem" }}
+                  className="w-full bg-transparent text-5xl font-semibold tracking-tight text-text outline-none placeholder:text-text-ghost"
                 />
 
                 {/* Tags */}
@@ -334,11 +364,7 @@ function App() {
                 {/* Metadata bar */}
                 <div className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
                   {selectedNote && (
-                    <>
-                      <span>{countWords(selectedNote.content)} mots</span>
-                      <span className="mx-2">•</span>
-                      <span>~{Math.max(1, Math.ceil(countWords(selectedNote.content) / 200))} min</span>
-                    </>
+                    <span>~{Math.max(1, Math.ceil(countWords(selectedNote.content) / 200))} min de lecture</span>
                   )}
                 </div>
               </div>
@@ -354,7 +380,9 @@ function App() {
             </Layout>
           </motion.div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>
+      </div>
+      </div>
     </MantineProvider>
   );
 }

@@ -128,7 +128,7 @@ body {
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -136,12 +136,23 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border-subtle);
-  border-radius: 3px;
+  background: transparent;
+  border-radius: 2px;
+  transition: background 0.2s;
 }
 
+*:hover > ::-webkit-scrollbar-thumb,
 ::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-subtle);
+}
+
+::-webkit-scrollbar-thumb:active {
   background: var(--color-text-muted);
+}
+
+/* Hide horizontal scrollbars by default */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
 
 /* Subtle texture for depth (optional) */

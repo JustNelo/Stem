@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { motion } from "framer-motion";
+import { Check } from "lucide-react";
 
 interface QuickCaptureProps {
   onSave: (content: string) => Promise<void>;
@@ -77,7 +78,7 @@ export function QuickCapture({ onSave }: QuickCaptureProps) {
           ref={textareaRef}
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Capture your thought..."
+          placeholder="Première ligne = titre de la note..."
           className="flex-1 resize-none bg-transparent font-sans text-base leading-relaxed text-text outline-none placeholder:text-text-muted"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -115,7 +116,7 @@ export function QuickCapture({ onSave }: QuickCaptureProps) {
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
             className="flex flex-col items-center gap-2"
           >
-            <div className="text-2xl">✓</div>
+            <Check size={24} className="text-emerald-500" />
             <span className="font-mono text-xs uppercase tracking-widest text-text">
               Sauvegardé
             </span>

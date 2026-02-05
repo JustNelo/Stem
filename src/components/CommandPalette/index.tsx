@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Search } from "lucide-react";
 import { useNotesStore } from "@/store/useNotesStore";
 import { useSettingsStore } from "@/store/useSettingsStore";
+import { useTagsStore } from "@/store/useTagsStore";
 import { cn } from "@/lib";
 
 const listItemVariants = {
@@ -16,17 +17,67 @@ const listItemVariants = {
   }),
 };
 
+function extractText(content: string | null | undefined): string {
+  if (!content) return "";
+  try {
+    const blocks = JSON.parse(content);
+    let text = "";
+    const walk = (obj: unknown): void => {
+      if (!obj || typeof obj !== "object") return;
+      if (Array.isArray(obj)) { obj.forEach(walk); return; }
+      const r = obj as Record<string, unknown>;
+      if (typeof r.text === "string") text += " " + r.text;
+      if (r.content) walk(r.content);
+      if (r.children) walk(r.children);
+    };
+    walk(blocks);
+    return text.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
 export function CommandPalette() {
   const { notes, selectNote, createNote, isLoading } = useNotesStore();
   const { userName } = useSettingsStore();
+  const { noteTagsCache, fetchTags, getTagsForNote } = useTagsStore();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const filteredNotes = notes.filter((note) =>
-    note.title.toLowerCase().includes(query.toLowerCase())
-  );
+  // Fetch tags on mount
+  useEffect(() => {
+    fetchTags();
+  }, [fetchTags]);
+
+  // Fetch tags only for notes not already cached
+  useEffect(() => {
+    notes.forEach((n) => {
+      if (!noteTagsCache[n.id]) getTagsForNote(n.id);
+    });
+  }, [notes, noteTagsCache, getTagsForNote]);
+
+  const filteredNotes = useMemo(() => {
+    const q = query.toLowerCase().trim();
+    if (!q) return notes;
+
+    // Tag filter: #tagname
+    if (q.startsWith("#")) {
+      const tagQuery = q.slice(1);
+      return notes.filter((note) => {
+        const noteTags = noteTagsCache[note.id] || [];
+        return noteTags.some((t) => t.name.toLowerCase().includes(tagQuery));
+      });
+    }
+
+    // Full-text search: title + content
+    return notes.filter((note) => {
+      const titleMatch = (note.title || "").toLowerCase().includes(q);
+      if (titleMatch) return true;
+      return extractText(note.content).includes(q);
+    });
+  }, [notes, query, noteTagsCache]);
 
   const totalItems = filteredNotes.length;
 

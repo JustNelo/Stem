@@ -1,15 +1,14 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Minus, Square, X, Settings } from "lucide-react";
 
-export type SaveStatus = "idle" | "saving" | "saved";
+export type { SaveStatus } from "@/types";
 
 interface TitleBarProps {
-  saveStatus?: SaveStatus;
   onOpenSettings?: () => void;
 }
 
-export function TitleBar({ saveStatus = "idle", onOpenSettings }: TitleBarProps) {
+export function TitleBar({ onOpenSettings }: TitleBarProps) {
   const appWindow = getCurrentWindow();
 
   const handleMinimize = async () => {
@@ -52,7 +51,7 @@ export function TitleBar({ saveStatus = "idle", onOpenSettings }: TitleBarProps)
       onMouseDown={handleDrag}
       className="fixed left-0 right-0 top-0 z-50 flex h-10 cursor-default items-center justify-between bg-surface border-b"
     >
-      {/* Left side - App name with save indicator */}
+      {/* Left side - App name */}
       <div
         onMouseDown={handleDrag}
         className="flex flex-1 items-center gap-2 px-4"
@@ -60,24 +59,6 @@ export function TitleBar({ saveStatus = "idle", onOpenSettings }: TitleBarProps)
         <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
           STEM
         </span>
-        
-        {/* Save status indicator */}
-        <AnimatePresence>
-          {saveStatus !== "idle" && (
-            <motion.div
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 500, damping: 25 }}
-              className={`h-2 w-2 rounded-full ${
-                saveStatus === "saving" 
-                  ? "bg-amber-400" 
-                  : "bg-emerald-400"
-              }`}
-              title={saveStatus === "saving" ? "Saving..." : "Saved"}
-            />
-          )}
-        </AnimatePresence>
       </div>
 
       {/* Right side - Settings + Window controls */}

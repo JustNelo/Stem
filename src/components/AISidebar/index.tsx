@@ -1,23 +1,28 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Trash2, ChevronRight, Send } from "lucide-react";
+import {
+  Trash2, ChevronRight, Send, FileText, Globe, PenLine,
+  Lightbulb, Brain, Tag, MessageCircle, Sparkles, Copy, Check,
+} from "lucide-react";
+import Markdown from "react-markdown";
+import { useSettingsStore } from "@/store/useSettingsStore";
 
 // Command definitions - easily extensible
 interface Command {
   name: string;
   description: string;
-  icon: string;
+  icon: React.ReactNode;
   action: string;
 }
 
 const COMMANDS: Command[] = [
-  { name: "resume", description: "Résumer la note", icon: "📝", action: "summarize" },
-  { name: "traduire", description: "Traduire en anglais", icon: "🌍", action: "translate" },
-  { name: "corriger", description: "Corriger l'orthographe", icon: "✏️", action: "correct" },
-  { name: "expliquer", description: "Expliquer simplement", icon: "💡", action: "explain" },
-  { name: "idees", description: "Générer des idées", icon: "🧠", action: "ideas" },
-  { name: "tags", description: "Suggérer des tags", icon: "🏷️", action: "tags" },
-  { name: "ask", description: "Poser une question", icon: "💬", action: "ask" },
+  { name: "resume", description: "Résumer la note", icon: <FileText size={14} />, action: "summarize" },
+  { name: "traduire", description: "Traduire en anglais", icon: <Globe size={14} />, action: "translate" },
+  { name: "corriger", description: "Corriger l'orthographe", icon: <PenLine size={14} />, action: "correct" },
+  { name: "expliquer", description: "Expliquer simplement", icon: <Lightbulb size={14} />, action: "explain" },
+  { name: "idees", description: "Générer des idées", icon: <Brain size={14} />, action: "ideas" },
+  { name: "tags", description: "Suggérer des tags", icon: <Tag size={14} />, action: "tags" },
+  { name: "ask", description: "Poser une question", icon: <MessageCircle size={14} />, action: "ask" },
 ];
 
 interface Message {
@@ -49,6 +54,7 @@ export function AISidebar({
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { ollamaUrl } = useSettingsStore();
 
   // Filter commands based on input
   const filteredCommands = input.startsWith("/")
@@ -168,11 +174,11 @@ export function AISidebar({
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
       className="relative z-20 flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-surface-elevated pt-10"
     >
-      <div className="flex h-full w-80 flex-col">
+      <div className="flex h-full w-full flex-col">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div className="flex items-center gap-2 leading-none">
-            <span className="text-text-secondary">✦</span>
+            <Sparkles size={12} className="text-text-secondary" />
             <h2 className="font-mono text-[10px] uppercase tracking-widest text-text-muted leading-none">
               Copilot
             </h2>
@@ -213,7 +219,7 @@ export function AISidebar({
                 exit={{ opacity: 0 }}
                 className="flex h-full flex-col items-center justify-center gap-4 text-center"
               >
-                <div className="text-4xl">✦</div>
+                <Sparkles size={32} className="text-text-muted" />
                 <div>
                   <p className="text-sm text-text-secondary">
                     Tapez <kbd className="rounded bg-surface-hover px-1.5 py-0.5 font-mono text-xs">/</kbd> pour les commandes
@@ -222,6 +228,11 @@ export function AISidebar({
                     ou posez une question
                   </p>
                 </div>
+                {!ollamaUrl && (
+                  <p className="mt-2 rounded-lg border border-border bg-surface px-3 py-2 text-[11px] text-text-muted">
+                    Configurez Ollama dans <strong className="text-text-secondary">Paramètres &gt; IA</strong> pour activer le copilot.
+                  </p>
+                )}
               </motion.div>
             ) : (
               <div className="space-y-4">
@@ -233,7 +244,7 @@ export function AISidebar({
                     exit={{ opacity: 0, y: -10 }}
                     className={`${
                       msg.type === "user"
-                        ? "ml-8"
+                        ? "ml-6"
                         : msg.type === "error"
                         ? ""
                         : "mr-8"
@@ -248,17 +259,7 @@ export function AISidebar({
                         <p className="text-xs text-red-400">{msg.content}</p>
                       </div>
                     ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-text-secondary">✦</span>
-                          <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                            {msg.command}
-                          </span>
-                        </div>
-                        <p className="text-sm leading-relaxed text-text-secondary">
-                          {msg.content}
-                        </p>
-                      </div>
+                      <AssistantMessage content={msg.content} command={msg.command} />
                     )}
                   </motion.div>
                 ))}
@@ -268,7 +269,7 @@ export function AISidebar({
                     animate={{ opacity: 1 }}
                     className="flex items-center gap-2"
                   >
-                    <span className="text-text-secondary">✦</span>
+                    <Sparkles size={12} className="animate-pulse text-text-secondary" />
                     <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted animate-pulse">
                       Réflexion...
                     </span>
@@ -295,6 +296,7 @@ export function AISidebar({
                   {filteredCommands.map((cmd, index) => (
                     <button
                       key={cmd.name}
+                      ref={index === selectedCommandIndex ? (el) => el?.scrollIntoView({ block: "nearest" }) : undefined}
                       onClick={() => selectCommand(cmd)}
                       className={`flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left transition-colors ${
                         index === selectedCommandIndex
@@ -302,7 +304,7 @@ export function AISidebar({
                           : "hover:bg-surface-hover"
                       }`}
                     >
-                      <span className="text-base">{cmd.icon}</span>
+                      <span className="text-text-muted">{cmd.icon}</span>
                       <div className="flex-1">
                         <div className="text-sm text-text">/{cmd.name}</div>
                         <div className="text-xs text-text-muted">{cmd.description}</div>
@@ -340,5 +342,38 @@ export function AISidebar({
         </div>
       </div>
     </motion.aside>
+  );
+}
+
+function AssistantMessage({ content, command }: { content: string; command?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div className="group space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles size={10} className="text-text-secondary" />
+          <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+            {command}
+          </span>
+        </div>
+        <button
+          onClick={handleCopy}
+          className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-text-ghost opacity-0 transition-all hover:text-text-muted group-hover:opacity-100"
+          title="Copier"
+        >
+          {copied ? <Check size={10} /> : <Copy size={10} />}
+        </button>
+      </div>
+      <div className="prose-sm prose-neutral text-sm leading-relaxed text-text-secondary [&_code]:rounded [&_code]:bg-surface-hover [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-xs [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm [&_li]:text-sm [&_p]:text-sm [&_pre]:rounded-lg [&_pre]:bg-surface-hover [&_pre]:p-3">
+        <Markdown>{content}</Markdown>
+      </div>
+    </div>
   );
 }

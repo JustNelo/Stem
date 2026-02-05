@@ -1,6 +1,7 @@
 import { useRef, useCallback, useState } from "react";
+import type { SaveStatus } from "@/types";
 
-export type SaveStatus = "idle" | "saving" | "saved";
+export type { SaveStatus };
 
 interface UseAutoSaveOptions {
   delay?: number;

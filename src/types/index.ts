@@ -4,6 +4,7 @@ export interface Note {
   content: string | null;
   created_at: number;
   updated_at: number;
+  is_pinned: boolean;
 }
 
 export interface CreateNotePayload {
@@ -16,3 +17,5 @@ export interface UpdateNotePayload {
   title?: string;
   content?: string;
 }
+
+export type SaveStatus = "idle" | "saving" | "saved";

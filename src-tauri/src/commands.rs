@@ -14,6 +14,7 @@ pub struct Note {
     pub content: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
+    pub is_pinned: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -43,6 +44,7 @@ fn row_to_note(row: &Row) -> Result<Note, rusqlite::Error> {
         content: row.get(2)?,
         created_at: row.get(3)?,
         updated_at: row.get(4)?,
+        is_pinned: row.get::<_, i32>(5).unwrap_or(0) != 0,
     })
 }
 
@@ -89,14 +91,14 @@ pub fn create_note(db: State<'_, Database>, payload: CreateNotePayload) -> Resul
         (&id, &title, &content, &now, &now),
     ))?;
 
-    Ok(Note { id, title, content, created_at: now, updated_at: now })
+    Ok(Note { id, title, content, created_at: now, updated_at: now, is_pinned: false })
 }
 
 #[tauri::command]
 pub fn get_note(db: State<'_, Database>, id: String) -> Result<Option<Note>, String> {
     let conn = db.connection();
     let mut stmt = map_err(
-        conn.prepare("SELECT id, title, content, created_at, updated_at FROM notes WHERE id = ?1")
+        conn.prepare("SELECT id, title, content, created_at, updated_at, is_pinned FROM notes WHERE id = ?1")
     )?;
 
     map_err(stmt.query_row([&id], row_to_note).optional())
@@ -106,7 +108,7 @@ pub fn get_note(db: State<'_, Database>, id: String) -> Result<Option<Note>, Str
 pub fn get_all_notes(db: State<'_, Database>) -> Result<Vec<Note>, String> {
     let conn = db.connection();
     let mut stmt = map_err(
-        conn.prepare("SELECT id, title, content, created_at, updated_at FROM notes ORDER BY updated_at DESC")
+        conn.prepare("SELECT id, title, content, created_at, updated_at, is_pinned FROM notes ORDER BY is_pinned DESC, updated_at DESC")
     )?;
 
     let notes = map_err(stmt.query_map([], row_to_note))?
@@ -143,6 +145,17 @@ pub fn delete_note(db: State<'_, Database>, id: String) -> Result<(), String> {
     let conn = db.connection();
     map_err(conn.execute("DELETE FROM notes WHERE id = ?1", [&id]))?;
     Ok(())
+}
+
+#[tauri::command]
+pub fn toggle_pin_note(db: State<'_, Database>, id: String) -> Result<Note, String> {
+    let conn = db.connection();
+    map_err(conn.execute(
+        "UPDATE notes SET is_pinned = CASE WHEN is_pinned = 0 THEN 1 ELSE 0 END WHERE id = ?1",
+        [&id],
+    ))?;
+    drop(conn);
+    get_note(db, id)?.ok_or_else(|| "Note not found".to_string())
 }
 
 // ===== TAG COMMANDS =====
@@ -235,7 +248,7 @@ pub fn export_all_data(db: State<'_, Database>) -> Result<String, String> {
 
     // Export notes
     let mut stmt = map_err(
-        conn.prepare("SELECT id, title, content, created_at, updated_at FROM notes ORDER BY updated_at DESC")
+        conn.prepare("SELECT id, title, content, created_at, updated_at, is_pinned FROM notes ORDER BY updated_at DESC")
     )?;
     let notes = map_err(stmt.query_map([], row_to_note))?
         .collect::<Result<Vec<_>, _>>();

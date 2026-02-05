@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 import type { Note } from "@/types";
+const toast = (msg: string, type: "success" | "error" | "info" = "success") => {
+  // Dynamic import to avoid circular deps at module level
+  import("@/store/useToastStore").then(({ useToastStore }) => {
+    useToastStore.getState().addToast(msg, type);
+  });
+};
 
 interface NotesState {
   notes: Note[];
@@ -13,6 +19,7 @@ interface NotesState {
   updateNote: (id: string, updates: { title?: string; content?: string }) => Promise<Note | null>;
   deleteNote: (id: string) => Promise<void>;
   selectNote: (note: Note | null) => void;
+  togglePin: (id: string) => Promise<void>;
 }
 
 export const useNotesStore = create<NotesState>((set) => ({
@@ -40,6 +47,7 @@ export const useNotesStore = create<NotesState>((set) => ({
         notes: [newNote, ...state.notes],
         selectedNote: newNote 
       }));
+      toast("Note créée");
       return newNote;
     } catch (error) {
       console.error("Failed to create note:", error);
@@ -86,6 +94,7 @@ export const useNotesStore = create<NotesState>((set) => ({
           selectedNote: newSelectedNote,
         };
       });
+      toast("Note supprimée");
     } catch (error) {
       console.error("Failed to delete note:", error);
     }
@@ -93,6 +102,19 @@ export const useNotesStore = create<NotesState>((set) => ({
 
   selectNote: (note) => {
     set({ selectedNote: note });
+  },
+
+  togglePin: async (id) => {
+    try {
+      const updatedNote = await invoke<Note>("toggle_pin_note", { id });
+      set((state) => ({
+        notes: state.notes.map((n) => (n.id === id ? updatedNote : n)),
+        selectedNote: state.selectedNote?.id === id ? updatedNote : state.selectedNote,
+      }));
+      toast(updatedNote.is_pinned ? "Note épinglée" : "Note désépinglée");
+    } catch (error) {
+      console.error("Failed to toggle pin:", error);
+    }
   },
 
 }));

@@ -3,7 +3,7 @@ mod db;
 mod ollama;
 
 use commands::{
-    create_note, delete_note, get_all_notes, get_note, init_database, update_note,
+    create_note, delete_note, get_all_notes, get_note, init_database, update_note, toggle_pin_note,
     create_tag, get_all_tags, update_tag, delete_tag, add_tag_to_note, remove_tag_from_note, get_tags_for_note,
     export_all_data, import_all_data,
 };
@@ -81,6 +81,7 @@ pub fn run() {
             get_all_notes,
             update_note,
             delete_note,
+            toggle_pin_note,
             summarize_note,
             create_tag,
             get_all_tags,

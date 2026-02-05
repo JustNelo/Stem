@@ -26,6 +26,11 @@ impl Database {
             )",
             [],
         )?;
+        // Migration: add is_pinned column if missing (ignore error if already exists)
+        let _ = conn.execute(
+            "ALTER TABLE notes ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0",
+            [],
+        );
         conn.execute(
             "CREATE TABLE IF NOT EXISTS tags (
                 id TEXT PRIMARY KEY,
