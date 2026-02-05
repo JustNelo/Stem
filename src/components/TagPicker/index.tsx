@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, X, Tag as TagIcon } from "lucide-react";
 import { useTagsStore } from "@/store/useTagsStore";
+import { TagNameSchema } from "@/types/schemas";
 import { TAG_COLORS } from "@/types/tag";
 import type { Tag } from "@/types/tag";
 
@@ -11,15 +12,13 @@ interface TagPickerProps {
 }
 
 export function TagPicker({ noteId }: TagPickerProps) {
-  const {
-    tags: allTags,
-    noteTagsCache,
-    fetchTags,
-    createTag,
-    addTagToNote,
-    removeTagFromNote,
-    getTagsForNote,
-  } = useTagsStore();
+  const allTags = useTagsStore((s) => s.tags);
+  const noteTagsCache = useTagsStore((s) => s.noteTagsCache);
+  const fetchTags = useTagsStore((s) => s.fetchTags);
+  const createTag = useTagsStore((s) => s.createTag);
+  const addTagToNote = useTagsStore((s) => s.addTagToNote);
+  const removeTagFromNote = useTagsStore((s) => s.removeTagFromNote);
+  const getTagsForNote = useTagsStore((s) => s.getTagsForNote);
 
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -85,8 +84,13 @@ export function TagPicker({ noteId }: TagPickerProps) {
     await removeTagFromNote(noteId, tagId);
   };
 
+  const tagNameValidation = TagNameSchema.safeParse(search);
+  const tagNameError = search.trim() && !tagNameValidation.success
+    ? tagNameValidation.error.issues[0]?.message ?? "Nom invalide"
+    : null;
+
   const handleCreateAndAdd = async () => {
-    if (!search.trim()) return;
+    if (!tagNameValidation.success) return;
     const newTag = await createTag({ name: search.trim(), color: selectedColor });
     if (newTag) {
       await addTagToNote(noteId, newTag.id);
@@ -202,6 +206,9 @@ export function TagPicker({ noteId }: TagPickerProps) {
                     <p className="mb-2 text-xs text-text-muted">
                       Créer le tag "{search.trim()}"
                     </p>
+                    {tagNameError && (
+                      <p className="mb-2 text-xs text-red-400">{tagNameError}</p>
+                    )}
                     {/* Color picker */}
                     <div className="mb-2 flex flex-wrap gap-1">
                       {TAG_COLORS.map((c) => (
@@ -220,7 +227,8 @@ export function TagPicker({ noteId }: TagPickerProps) {
                     </div>
                     <button
                       onClick={handleCreateAndAdd}
-                      className="flex w-full cursor-pointer items-center justify-center gap-1 rounded-md bg-text px-3 py-1.5 text-xs font-medium text-surface transition-opacity hover:opacity-90"
+                      disabled={!!tagNameError}
+                      className="flex w-full cursor-pointer items-center justify-center gap-1 rounded-md bg-text px-3 py-1.5 text-xs font-medium text-surface transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <Plus size={12} />
                       Créer et ajouter

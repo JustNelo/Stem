@@ -13,10 +13,21 @@ interface EditorProps {
 
 const DARK_THEMES = new Set(["dark", "nord", "ocean"]);
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function safeParse(content: string | undefined): any[] | undefined {
+  if (!content) return undefined;
+  try {
+    return JSON.parse(content);
+  } catch {
+    console.warn("Editor: failed to parse initial content, starting fresh.");
+    return undefined;
+  }
+}
+
 export function Editor({ initialContent, onChange }: EditorProps) {
-  const { theme } = useSettingsStore();
+  const theme = useSettingsStore((s) => s.theme);
   const editor = useCreateBlockNote({
-    initialContent: initialContent ? JSON.parse(initialContent) : undefined,
+    initialContent: safeParse(initialContent),
   });
 
   const editorTheme = DARK_THEMES.has(theme) ? "dark" : "light";

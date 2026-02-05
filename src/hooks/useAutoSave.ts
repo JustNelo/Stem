@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useState, useEffect } from "react";
 import type { SaveStatus } from "@/types";
 
 export type { SaveStatus };
@@ -52,6 +52,9 @@ export function useAutoSave({ delay = 500, onSave }: UseAutoSaveOptions) {
     }
     setStatus("idle");
   }, []);
+
+  // Cleanup pending timeouts on unmount
+  useEffect(() => cancel, [cancel]);
 
   return { status, save, cancel };
 }

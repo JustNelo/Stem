@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { motion } from "framer-motion";
 import { Minus, Square, X, Settings } from "lucide-react";
@@ -9,7 +10,7 @@ interface TitleBarProps {
 }
 
 export function TitleBar({ onOpenSettings }: TitleBarProps) {
-  const appWindow = getCurrentWindow();
+  const appWindow = useRef(getCurrentWindow()).current;
 
   const handleMinimize = async () => {
     try {

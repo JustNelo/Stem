@@ -1,6 +1,8 @@
 import { create } from "zustand";
-import { invoke } from "@tauri-apps/api/core";
+import { safeInvoke, invokeVoid } from "@/lib/tauri";
+import { NoteSchema, NoteArraySchema } from "@/types/schemas";
 import type { Note } from "@/types";
+
 const toast = (msg: string, type: "success" | "error" | "info" = "success") => {
   // Dynamic import to avoid circular deps at module level
   import("@/store/useToastStore").then(({ useToastStore }) => {
@@ -30,17 +32,18 @@ export const useNotesStore = create<NotesState>((set) => ({
   fetchNotes: async () => {
     set({ isLoading: true });
     try {
-      const notes = await invoke<Note[]>("get_all_notes");
+      const notes = await safeInvoke("get_all_notes", NoteArraySchema);
       set({ notes, isLoading: false });
     } catch (error) {
       console.error("Failed to fetch notes:", error);
+      toast("Impossible de charger les notes", "error");
       set({ isLoading: false });
     }
   },
 
   createNote: async () => {
     try {
-      const newNote = await invoke<Note>("create_note", {
+      const newNote = await safeInvoke("create_note", NoteSchema, {
         payload: { title: "Sans titre", content: null },
       });
       set((state) => ({ 
@@ -51,13 +54,14 @@ export const useNotesStore = create<NotesState>((set) => ({
       return newNote;
     } catch (error) {
       console.error("Failed to create note:", error);
+      toast("Impossible de créer la note", "error");
       return null;
     }
   },
 
   updateNote: async (id, updates) => {
     try {
-      const updatedNote = await invoke<Note>("update_note", {
+      const updatedNote = await safeInvoke("update_note", NoteSchema, {
         payload: { id, ...updates },
       });
       
@@ -69,23 +73,21 @@ export const useNotesStore = create<NotesState>((set) => ({
       return updatedNote;
     } catch (error) {
       console.error("Failed to update note:", error);
+      toast("Impossible de sauvegarder la note", "error");
       return null;
     }
   },
 
   deleteNote: async (id) => {
     try {
-      await invoke("delete_note", { id });
+      await invokeVoid("delete_note", { id });
       set((state) => {
         const remainingNotes = state.notes.filter((note) => note.id !== id);
         const wasSelected = state.selectedNote?.id === id;
         
         let newSelectedNote = state.selectedNote;
         if (wasSelected) {
-          // Sort by date (most recent first) to match UI behavior
-          const sortedNotes = [...remainingNotes].sort((a, b) => 
-            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-          );
+          const sortedNotes = [...remainingNotes].sort((a, b) => b.updated_at - a.updated_at);
           newSelectedNote = sortedNotes.length > 0 ? sortedNotes[0] : null;
         }
         
@@ -97,6 +99,7 @@ export const useNotesStore = create<NotesState>((set) => ({
       toast("Note supprimée");
     } catch (error) {
       console.error("Failed to delete note:", error);
+      toast("Impossible de supprimer la note", "error");
     }
   },
 
@@ -106,7 +109,7 @@ export const useNotesStore = create<NotesState>((set) => ({
 
   togglePin: async (id) => {
     try {
-      const updatedNote = await invoke<Note>("toggle_pin_note", { id });
+      const updatedNote = await safeInvoke("toggle_pin_note", NoteSchema, { id });
       set((state) => ({
         notes: state.notes.map((n) => (n.id === id ? updatedNote : n)),
         selectedNote: state.selectedNote?.id === id ? updatedNote : state.selectedNote,
@@ -114,6 +117,7 @@ export const useNotesStore = create<NotesState>((set) => ({
       toast(updatedNote.is_pinned ? "Note épinglée" : "Note désépinglée");
     } catch (error) {
       console.error("Failed to toggle pin:", error);
+      toast("Impossible d'épingler la note", "error");
     }
   },
 

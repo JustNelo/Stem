@@ -1,3 +1,5 @@
+import { extractPlainText } from "@/lib/utils/text";
+
 export function formatDate(timestamp: number): string {
   return new Date(timestamp * 1000).toLocaleDateString("fr-FR", {
     day: "numeric",
@@ -34,36 +36,7 @@ export function formatRelativeTime(timestamp: number): string {
 
 export function countWords(content: string | null): number {
   if (!content) return 0;
-  try {
-    const blocks = JSON.parse(content);
-    let text = "";
-    
-    const extractText = (obj: unknown): void => {
-      if (!obj || typeof obj !== "object") return;
-      
-      if (Array.isArray(obj)) {
-        obj.forEach(extractText);
-        return;
-      }
-      
-      const record = obj as Record<string, unknown>;
-      
-      if (typeof record.text === "string") {
-        text += " " + record.text;
-      }
-      
-      if (record.content) {
-        extractText(record.content);
-      }
-      if (record.children) {
-        extractText(record.children);
-      }
-    };
-    
-    extractText(blocks);
-    const words = text.trim().split(/\s+/).filter(Boolean);
-    return words.length;
-  } catch {
-    return 0;
-  }
+  const text = extractPlainText(content);
+  if (!text) return 0;
+  return text.split(/\s+/).filter(Boolean).length;
 }

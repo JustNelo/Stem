@@ -1,21 +1,30 @@
 use rusqlite::{Connection, Result};
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex, MutexGuard};
 
+#[derive(Clone)]
 pub struct Database {
-    conn: Mutex<Connection>,
+    conn: Arc<Mutex<Connection>>,
 }
 
 impl Database {
     pub fn new(db_path: PathBuf) -> Result<Self> {
         let conn = Connection::open(db_path)?;
         Ok(Self {
-            conn: Mutex::new(conn),
+            conn: Arc::new(Mutex::new(conn)),
+        })
+    }
+
+    #[cfg(test)]
+    pub fn in_memory() -> Result<Self> {
+        let conn = Connection::open_in_memory()?;
+        Ok(Self {
+            conn: Arc::new(Mutex::new(conn)),
         })
     }
 
     pub fn init(&self) -> Result<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.lock()?;
         conn.execute(
             "CREATE TABLE IF NOT EXISTS notes (
                 id TEXT PRIMARY KEY,
@@ -52,7 +61,19 @@ impl Database {
         Ok(())
     }
 
-    pub fn connection(&self) -> std::sync::MutexGuard<'_, Connection> {
-        self.conn.lock().unwrap()
+    fn lock(&self) -> Result<MutexGuard<'_, Connection>> {
+        self.conn
+            .lock()
+            .map_err(|e| rusqlite::Error::InvalidParameterName(format!("Mutex poisoned: {}", e)))
+    }
+
+    /// Returns an immutable reference to the connection (for reads and simple writes).
+    pub fn connection(&self) -> MutexGuard<'_, Connection> {
+        self.lock().expect("Database mutex poisoned")
+    }
+
+    /// Returns a mutable reference to the connection (required for transactions).
+    pub fn connection_mut(&self) -> MutexGuard<'_, Connection> {
+        self.lock().expect("Database mutex poisoned")
     }
 }

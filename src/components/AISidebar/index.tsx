@@ -1,37 +1,22 @@
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Trash2, ChevronRight, Send, FileText, Globe, PenLine,
   Lightbulb, Brain, Tag, MessageCircle, Sparkles, Copy, Check,
 } from "lucide-react";
 import Markdown from "react-markdown";
-import { useSettingsStore } from "@/store/useSettingsStore";
+import { useAIChat } from "@/hooks/core/useAIChat";
 
-// Command definitions - easily extensible
-interface Command {
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-  action: string;
-}
-
-const COMMANDS: Command[] = [
-  { name: "resume", description: "Résumer la note", icon: <FileText size={14} />, action: "summarize" },
-  { name: "traduire", description: "Traduire en anglais", icon: <Globe size={14} />, action: "translate" },
-  { name: "corriger", description: "Corriger l'orthographe", icon: <PenLine size={14} />, action: "correct" },
-  { name: "expliquer", description: "Expliquer simplement", icon: <Lightbulb size={14} />, action: "explain" },
-  { name: "idees", description: "Générer des idées", icon: <Brain size={14} />, action: "ideas" },
-  { name: "tags", description: "Suggérer des tags", icon: <Tag size={14} />, action: "tags" },
-  { name: "ask", description: "Poser une question", icon: <MessageCircle size={14} />, action: "ask" },
-];
-
-interface Message {
-  id: string;
-  type: "user" | "assistant" | "error";
-  content: string;
-  command?: string;
-  timestamp: Date;
-}
+// Icon mapping for commands
+const COMMAND_ICONS: Record<string, React.ReactNode> = {
+  resume: <FileText size={14} />,
+  traduire: <Globe size={14} />,
+  corriger: <PenLine size={14} />,
+  expliquer: <Lightbulb size={14} />,
+  idees: <Brain size={14} />,
+  tags: <Tag size={14} />,
+  ask: <MessageCircle size={14} />,
+};
 
 interface AISidebarProps {
   isOpen: boolean;
@@ -48,121 +33,21 @@ export function AISidebar({
   onExecuteCommand,
   isProcessing,
 }: AISidebarProps) {
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [showCommands, setShowCommands] = useState(false);
-  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { ollamaUrl } = useSettingsStore();
-
-  // Filter commands based on input
-  const filteredCommands = input.startsWith("/")
-    ? COMMANDS.filter((cmd) =>
-        cmd.name.toLowerCase().startsWith(input.slice(1).toLowerCase())
-      )
-    : COMMANDS;
-
-  // Auto-scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  // Show commands menu when typing /
-  useEffect(() => {
-    setShowCommands(input.startsWith("/") && !input.includes(" "));
-    setSelectedCommandIndex(0);
-  }, [input]);
-
-  // Focus input when sidebar opens
-  useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
-  }, [isOpen]);
-
-  const executeCommand = useCallback(async (commandName: string, args?: string) => {
-    const command = COMMANDS.find((c) => c.name === commandName);
-    if (!command) return;
-
-    // Add user message - show only the user's text, not the command
-    const displayContent = args || `/${commandName}`;
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      type: "user",
-      content: displayContent,
-      command: commandName,
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-
-    try {
-      const result = await onExecuteCommand(command.action, args);
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: "assistant",
-        content: result,
-        command: commandName,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: "error",
-        content: `Erreur: ${error}`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    }
-  }, [onExecuteCommand]);
-
-  const handleSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isProcessing) return;
-
-    if (input.startsWith("/")) {
-      const parts = input.slice(1).split(" ");
-      const commandName = parts[0].toLowerCase();
-      const args = parts.slice(1).join(" ");
-      executeCommand(commandName, args || undefined);
-    } else {
-      // Free-form question - use ask command
-      executeCommand("ask", input);
-    }
-  }, [input, isProcessing, executeCommand]);
-
-  const clearConversation = useCallback(() => {
-    setMessages([]);
-  }, []);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (showCommands && filteredCommands.length > 0) {
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setSelectedCommandIndex((prev) =>
-          prev < filteredCommands.length - 1 ? prev + 1 : 0
-        );
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setSelectedCommandIndex((prev) =>
-          prev > 0 ? prev - 1 : filteredCommands.length - 1
-        );
-      } else if (e.key === "Tab" || e.key === "Enter") {
-        e.preventDefault();
-        const cmd = filteredCommands[selectedCommandIndex];
-        setInput(`/${cmd.name} `);
-        setShowCommands(false);
-      }
-    }
-  }, [showCommands, filteredCommands, selectedCommandIndex]);
-
-  const selectCommand = useCallback((cmd: Command) => {
-    setInput(`/${cmd.name} `);
-    setShowCommands(false);
-    inputRef.current?.focus();
-  }, []);
+  const {
+    input,
+    setInput,
+    messages,
+    showCommands,
+    selectedCommandIndex,
+    filteredCommands,
+    inputRef,
+    messagesEndRef,
+    ollamaUrl,
+    handleSubmit,
+    handleKeyDown,
+    clearConversation,
+    selectCommand,
+  } = useAIChat({ onExecuteCommand, isProcessing, isOpen });
 
   return (
     <motion.aside
@@ -304,7 +189,7 @@ export function AISidebar({
                           : "hover:bg-surface-hover"
                       }`}
                     >
-                      <span className="text-text-muted">{cmd.icon}</span>
+                      <span className="text-text-muted">{COMMAND_ICONS[cmd.name]}</span>
                       <div className="flex-1">
                         <div className="text-sm text-text">/{cmd.name}</div>
                         <div className="text-xs text-text-muted">{cmd.description}</div>

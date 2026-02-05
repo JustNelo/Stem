@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
@@ -11,7 +11,7 @@ export function QuickCapture({ onSave }: QuickCaptureProps) {
   const [content, setContent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const appWindow = getCurrentWindow();
+  const appWindow = useMemo(() => getCurrentWindow(), []);
 
   const handleClose = useCallback(async () => {
     await appWindow.close();
