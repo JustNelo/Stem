@@ -19,3 +19,11 @@ export interface UpdateNotePayload {
 }
 
 export type SaveStatus = "idle" | "saving" | "saved";
+
+export interface SemanticResult {
+  note_id: string;
+  title: string;
+  score: number;
+}
+
+export type GitSyncStatus = "idle" | "syncing" | "synced" | "error";

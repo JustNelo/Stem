@@ -26,7 +26,7 @@ export const NoteListItem = memo(function NoteListItem({
     >
       <button
         onClick={() => onSelect(note)}
-        className="flex-1 cursor-pointer px-3 py-2 text-left"
+        className="min-w-0 flex-1 cursor-pointer px-3 py-2 text-left"
       >
         <div className="mb-1 truncate text-sm font-medium tracking-tight text-text">
           {note.title || "Sans titre"}

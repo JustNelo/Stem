@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState, useCallback } from "react";
 import { MantineProvider } from "@mantine/core";
 import { AnimatePresence, motion } from "framer-motion";
 import "@mantine/core/styles.css";
@@ -14,6 +14,8 @@ import { useAppInit } from "@/hooks/core/useAppInit";
 import { useEditorState } from "@/hooks/core/useEditorState";
 import { useAICommand } from "@/hooks/core/useAICommand";
 import { useAppShortcuts } from "@/hooks/core/useAppShortcuts";
+import { useEmbeddingSync } from "@/hooks/useEmbeddingSync";
+import { ReviewMode } from "@/components/features/ReviewMode";
 
 const Editor = lazy(() => import("@/components/Editor"));
 const QuickCapture = lazy(() => import("@/components/QuickCapture").then((m) => ({ default: m.QuickCapture })));
@@ -41,6 +43,11 @@ function App() {
   const { isProcessing, handleExecuteCommand } = useAICommand();
 
   useAppShortcuts();
+  useEmbeddingSync();
+
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const openReview = useCallback(() => setReviewOpen(true), []);
+  const closeReview = useCallback(() => setReviewOpen(false), []);
 
   // Render Quick Capture mode
   if (isQuickCapture) {
@@ -119,6 +126,7 @@ function App() {
                   localTitle={localTitle}
                   onTitleChange={handleTitleChange}
                   noteContent={selectedNote.content}
+                  onReview={openReview}
                 />
                 <Suspense fallback={null}>
                   <Editor
@@ -133,6 +141,9 @@ function App() {
             )}
           </Layout>
         </div>
+
+        {/* Review Mode modal */}
+        <ReviewMode isOpen={reviewOpen} onClose={closeReview} />
       </div>
     </MantineProvider>
   );

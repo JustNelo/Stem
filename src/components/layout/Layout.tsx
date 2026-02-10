@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Menu, Sparkles } from "lucide-react";
 import { useNotesStore } from "@/store/useNotesStore";
 import { useAppStore } from "@/store/useAppStore";
+import { useGitSync } from "@/hooks/useGitSync";
 import { countWords } from "@/lib/format";
 import { AISidebar } from "@/components/AISidebar";
 import { StatusBar } from "@/components/StatusBar";
@@ -30,6 +31,8 @@ export function Layout({
   const rightOpen = useAppStore((s) => s.rightSidebarOpen);
   const setLeftOpen = useAppStore((s) => s.setLeftSidebarOpen);
   const setRightOpen = useAppStore((s) => s.setRightSidebarOpen);
+
+  const { syncStatus: gitSyncStatus } = useGitSync();
 
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
 
@@ -75,13 +78,13 @@ export function Layout({
 
       {/* CENTER COLUMN — Editor */}
       <main className="relative z-10 flex flex-1 flex-col overflow-hidden pt-10">
-        <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-3xl px-8 py-6">{children}</div>
+        <div className="flex flex-1 overflow-y-auto">
+          <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-8 py-6">{children}</div>
         </div>
         {/* Status bar */}
         {selectedNote && (
           <div className="flex w-full shrink-0 justify-end border-t border-border/50 px-4 py-1.5">
-            <StatusBar saveStatus={saveStatus} wordCount={wordCount} />
+            <StatusBar saveStatus={saveStatus} wordCount={wordCount} gitStatus={gitSyncStatus} />
           </div>
         )}
       </main>

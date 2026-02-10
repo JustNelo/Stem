@@ -42,9 +42,9 @@ export function NotesSidebar({
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
       className="relative z-20 flex h-full shrink-0 flex-col overflow-hidden border-r border-border bg-surface-elevated"
     >
-      <div style={{ width: SIDEBAR_WIDTH }} className="flex h-full flex-col">
+      <div style={{ width: SIDEBAR_WIDTH }} className="flex h-full flex-col pt-10">
         {/* Sidebar header */}
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div className="flex items-center justify-between px-4 py-3">
           <h2 className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
             Notes
           </h2>
@@ -82,7 +82,7 @@ export function NotesSidebar({
         </div>
 
         {/* Local search filter */}
-        <div className="border-b border-border/50 px-3 py-2">
+        <div className="border-t border-b border-border px-3 py-2">
           <div className="flex items-center gap-2 rounded-md bg-surface px-2 py-1.5">
             <Search size={12} className="text-text-ghost" />
             <input

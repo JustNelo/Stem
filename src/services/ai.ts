@@ -39,6 +39,22 @@ export const AIService = {
   },
 
   /**
+   * Send a raw prompt directly to Ollama (used by slash commands).
+   */
+  async executeRawPrompt(
+    prompt: string,
+    model: string,
+    ollamaUrl: string,
+  ): Promise<string> {
+    const result = await safeInvoke("summarize_note", z.string(), {
+      content: prompt,
+      model,
+      ollamaUrl,
+    });
+    return result || "Résultat vide.";
+  },
+
+  /**
    * Check whether Ollama is reachable at the given URL.
    */
   async checkConnection(ollamaUrl: string): Promise<boolean> {

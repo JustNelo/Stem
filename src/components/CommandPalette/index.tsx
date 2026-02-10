@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Search } from "lucide-react";
+import { Search, Brain, Loader2 } from "lucide-react";
 import { cn } from "@/lib";
 import { useCommandPalette } from "@/hooks/core/useCommandPalette";
 
@@ -22,8 +22,11 @@ export function CommandPalette() {
     inputRef,
     listRef,
     filteredNotes,
+    semanticResults,
+    isSearchingSemantic,
     isLoading,
     handleSelectNote,
+    handleSelectSemanticResult,
   } = useCommandPalette();
 
   return (
@@ -45,13 +48,14 @@ export function CommandPalette() {
       </div>
 
       {/* Results */}
-      <div ref={listRef} className="max-h-80 overflow-y-auto p-2">
+      <div ref={listRef} className="max-h-96 overflow-y-auto p-2">
         {isLoading ? (
           <div className="px-4 py-6 text-center text-sm text-text-muted">
             Chargement...
           </div>
         ) : (
           <>
+            {/* Keyword results */}
             {filteredNotes.length > 0 && (
               <div>
                 <div className="px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest text-text-muted">
@@ -93,7 +97,64 @@ export function CommandPalette() {
               </div>
             )}
 
-            {filteredNotes.length === 0 && (
+            {/* Semantic results */}
+            {query.trim().length >= 3 && (
+              <div>
+                <div className="flex items-center gap-1.5 px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                  <Brain size={10} />
+                  Résultats sémantiques
+                  {isSearchingSemantic && (
+                    <Loader2 size={10} className="animate-spin" />
+                  )}
+                </div>
+                {semanticResults.length > 0 ? (
+                  semanticResults.map((result, i) => {
+                    const combinedIndex = filteredNotes.length + i;
+                    return (
+                      <motion.button
+                        key={result.note_id}
+                        custom={combinedIndex}
+                        variants={listItemVariants}
+                        initial="hidden"
+                        animate="visible"
+                        onClick={() => handleSelectSemanticResult(result)}
+                        data-note-item
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
+                        className={cn(
+                          "group flex w-full cursor-pointer items-center justify-between rounded-lg p-3 transition-all duration-200",
+                          selectedIndex === combinedIndex
+                            ? "bg-surface-hover"
+                            : "hover:bg-surface-hover"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "text-sm transition-colors duration-200",
+                            selectedIndex === combinedIndex
+                              ? "text-text"
+                              : "text-text-secondary group-hover:text-text"
+                          )}
+                        >
+                          {result.title || "Sans titre"}
+                        </span>
+                        <span className="font-mono text-[10px] text-text-muted">
+                          {Math.round(result.score * 100)}%
+                        </span>
+                      </motion.button>
+                    );
+                  })
+                ) : (
+                  !isSearchingSemantic && (
+                    <div className="px-4 py-2 text-center text-xs text-text-ghost">
+                      Aucun résultat sémantique
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+
+            {filteredNotes.length === 0 && semanticResults.length === 0 && !isSearchingSemantic && (
               <div className="px-4 py-6 text-center text-sm text-text-muted">
                 Aucune note trouvée
               </div>

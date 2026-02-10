@@ -43,6 +43,18 @@ impl Database {
         // Migration: drop legacy tag tables (ignore errors if they don't exist)
         let _ = conn.execute("DROP TABLE IF EXISTS note_tags", []);
         let _ = conn.execute("DROP TABLE IF EXISTS tags", []);
+
+        // Embeddings table for semantic search (RAG)
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS note_embeddings (
+                note_id TEXT PRIMARY KEY REFERENCES notes(id) ON DELETE CASCADE,
+                embedding BLOB NOT NULL,
+                model TEXT NOT NULL,
+                updated_at INTEGER NOT NULL
+            )",
+            [],
+        )?;
+
         Ok(())
     }
 

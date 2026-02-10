@@ -17,6 +17,16 @@ export const NoteArraySchema = z.array(NoteSchema);
 
 export const OllamaModelsSchema = z.array(z.string());
 
+// ===== Semantic search schemas =====
+
+export const SemanticResultSchema = z.object({
+  note_id: z.string(),
+  title: z.string(),
+  score: z.number(),
+});
+
+export const SemanticResultArraySchema = z.array(SemanticResultSchema);
+
 // ===== Input validation schemas =====
 
 export const OllamaUrlSchema = z

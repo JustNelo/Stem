@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 struct OllamaRequest {
     model: String,
     prompt: String,
+    system: String,
     stream: bool,
 }
 
@@ -39,6 +40,7 @@ pub async fn summarize_note(
     let request = OllamaRequest {
         model,
         prompt: content,
+        system: "Tu es un assistant intelligent. Réponds TOUJOURS en français, sauf si l'utilisateur demande explicitement une autre langue. Utilise un style clair, structuré et pédagogique.".to_string(),
         stream: false,
     };
 

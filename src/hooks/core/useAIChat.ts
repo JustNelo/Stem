@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useSettingsStore } from "@/store/useSettingsStore";
 
 interface Command {
@@ -36,29 +36,34 @@ interface UseAIChatOptions {
 export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatOptions) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
-  const [showCommands, setShowCommands] = useState(false);
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const ollamaUrl = useSettingsStore((s) => s.ollamaUrl);
 
-  // Filter commands based on input
-  const filteredCommands = input.startsWith("/")
-    ? COMMANDS.filter((cmd) =>
-        cmd.name.toLowerCase().startsWith(input.slice(1).toLowerCase())
-      )
-    : COMMANDS;
+  // Filter commands based on input (memoized to avoid recalc on unrelated renders)
+  const filteredCommands = useMemo(
+    () =>
+      input.startsWith("/")
+        ? COMMANDS.filter((cmd) =>
+            cmd.name.toLowerCase().startsWith(input.slice(1).toLowerCase())
+          )
+        : COMMANDS,
+    [input],
+  );
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Show commands menu when typing /
+  // Derive showCommands from input (no extra state/effect needed)
+  const showCommands = input.startsWith("/") && !input.includes(" ");
+
+  // Reset selected index when filtered list changes
   useEffect(() => {
-    setShowCommands(input.startsWith("/") && !input.includes(" "));
     setSelectedCommandIndex(0);
-  }, [input]);
+  }, [filteredCommands.length]);
 
   // Focus input when sidebar opens
   useEffect(() => {
@@ -137,14 +142,12 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
         e.preventDefault();
         const cmd = filteredCommands[selectedCommandIndex];
         setInput(`/${cmd.name} `);
-        setShowCommands(false);
       }
     }
   }, [showCommands, filteredCommands, selectedCommandIndex]);
 
   const selectCommand = useCallback((cmd: Command) => {
     setInput(`/${cmd.name} `);
-    setShowCommands(false);
     inputRef.current?.focus();
   }, []);
 

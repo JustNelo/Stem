@@ -16,6 +16,11 @@ interface SettingsState {
   // AI
   ollamaModel: string;
   ollamaUrl: string;
+  embeddingModel: string;
+
+  // Git Sync
+  gitRepoPath: string;
+  gitAutoSync: boolean;
 
   // Actions
   setUserName: (name: string) => void;
@@ -24,6 +29,9 @@ interface SettingsState {
   setFontSize: (size: FontSize) => void;
   setOllamaModel: (model: string) => void;
   setOllamaUrl: (url: string) => void;
+  setEmbeddingModel: (model: string) => void;
+  setGitRepoPath: (path: string) => void;
+  setGitAutoSync: (enabled: boolean) => void;
   completeOnboarding: () => void;
   resetSettings: () => void;
   resetOnboarding: () => void;
@@ -37,6 +45,9 @@ const DEFAULT_SETTINGS = {
   fontSize: "medium" as FontSize,
   ollamaModel: "mistral",
   ollamaUrl: "http://localhost:11434",
+  embeddingModel: "nomic-embed-text",
+  gitRepoPath: "",
+  gitAutoSync: false,
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -67,6 +78,9 @@ export const useSettingsStore = create<SettingsState>()(
 
       setOllamaModel: (ollamaModel) => set({ ollamaModel }),
       setOllamaUrl: (ollamaUrl) => set({ ollamaUrl }),
+      setEmbeddingModel: (embeddingModel) => set({ embeddingModel }),
+      setGitRepoPath: (gitRepoPath) => set({ gitRepoPath }),
+      setGitAutoSync: (gitAutoSync) => set({ gitAutoSync }),
 
       completeOnboarding: () => set({ hasCompletedOnboarding: true }),
 
