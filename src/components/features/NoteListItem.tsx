@@ -2,12 +2,10 @@ import { memo } from "react";
 import { Pin, Trash2 } from "lucide-react";
 import { formatRelativeTime } from "@/lib/format";
 import type { Note } from "@/types";
-import type { Tag } from "@/types/tag";
 
 interface NoteListItemProps {
   note: Note;
   isSelected: boolean;
-  tags: Tag[];
   onSelect: (note: Note) => void;
   onTogglePin: (id: string) => void;
   onRequestDelete: (id: string) => void;
@@ -16,7 +14,6 @@ interface NoteListItemProps {
 export const NoteListItem = memo(function NoteListItem({
   note,
   isSelected,
-  tags,
   onSelect,
   onTogglePin,
   onRequestDelete,
@@ -34,19 +31,9 @@ export const NoteListItem = memo(function NoteListItem({
         <div className="mb-1 truncate text-sm font-medium tracking-tight text-text">
           {note.title || "Sans titre"}
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-            {formatRelativeTime(note.updated_at)}
-          </span>
-          {tags.slice(0, 3).map((tag) => (
-            <span
-              key={tag.id}
-              className="h-1.5 w-1.5 rounded-full"
-              style={{ backgroundColor: tag.color }}
-              title={tag.name}
-            />
-          ))}
-        </div>
+        <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+          {formatRelativeTime(note.updated_at)}
+        </span>
       </button>
       <div className="mr-2 flex shrink-0 items-center gap-0.5">
         <button

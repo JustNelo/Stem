@@ -1,16 +1,13 @@
 import { useState, useCallback } from "react";
-import { z } from "zod";
-import { safeInvoke } from "@/lib/tauri";
 import { useNotesStore } from "@/store/useNotesStore";
 import { useSettingsStore } from "@/store/useSettingsStore";
-import { extractPlainText } from "@/lib/utils/text";
-import { buildAIPrompt } from "@/lib/ai-prompts";
+import { AIService } from "@/services/ai";
 
 /**
  * Encapsulates AI command execution logic:
  * - Reads selectedNote, ollamaModel, ollamaUrl via granular selectors
  * - Manages isProcessing state
- * - Builds prompts and invokes Ollama via Tauri IPC
+ * - Delegates to AIService for prompt building and IPC
  */
 export function useAICommand() {
   const selectedNote = useNotesStore((s) => s.selectedNote);
@@ -28,19 +25,14 @@ export function useAICommand() {
       setIsProcessing(true);
 
       try {
-        const text = extractPlainText(selectedNote.content);
-        if (!text.trim()) {
-          return "Aucun contenu dans la note.";
-        }
-
-        const prompt = buildAIPrompt(command, text, args);
-
-        const result = await safeInvoke("summarize_note", z.string(), {
-          content: prompt,
-          model: ollamaModel,
+        const result = await AIService.executeCommand(
+          command,
+          selectedNote.content,
+          ollamaModel,
           ollamaUrl,
-        });
-        return result || "Résultat vide.";
+          args,
+        );
+        return result;
       } catch (error) {
         throw new Error(`${error}. Vérifiez qu'Ollama est lancé.`);
       } finally {

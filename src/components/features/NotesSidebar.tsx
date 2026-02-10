@@ -1,12 +1,10 @@
-import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Plus, ChevronLeft, ArrowDownAZ, CalendarArrowDown, X, Filter } from "lucide-react";
+import { motion } from "framer-motion";
+import { Plus, ChevronLeft, ArrowDownAZ, CalendarArrowDown, Search } from "lucide-react";
 import { useNotesStore } from "@/store/useNotesStore";
-import { useTagsStore } from "@/store/useTagsStore";
 import { useNotesFilter } from "@/hooks/core/useNotesFilter";
 import { NoteListItem } from "@/components/features/NoteListItem";
 
-const SIDEBAR_WIDTH = 256;
+const SIDEBAR_WIDTH = 260;
 
 interface NotesSidebarProps {
   isOpen: boolean;
@@ -24,29 +22,15 @@ export function NotesSidebar({
   const createNote = useNotesStore((s) => s.createNote);
   const togglePin = useNotesStore((s) => s.togglePin);
 
-  const tags = useTagsStore((s) => s.tags);
-  const noteTagsCache = useTagsStore((s) => s.noteTagsCache);
-  const fetchTags = useTagsStore((s) => s.fetchTags);
-  const fetchAllNoteTags = useTagsStore((s) => s.fetchAllNoteTags);
-
   const {
-    notes,
+    filtered,
     pinned,
     unpinned,
     sortBy,
     toggleSort,
-    filterTagId,
-    setFilterTagId,
+    searchQuery,
+    setSearchQuery,
   } = useNotesFilter();
-
-  const [isTagFilterOpen, setIsTagFilterOpen] = useState(false);
-  const tagFilterRef = useRef<HTMLDivElement>(null);
-
-  // Fetch tags + all note-tag associations on mount
-  useEffect(() => {
-    fetchTags();
-    fetchAllNoteTags();
-  }, [fetchTags, fetchAllNoteTags]);
 
   return (
     <motion.aside
@@ -56,31 +40,15 @@ export function NotesSidebar({
         opacity: isOpen ? 1 : 0,
       }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="relative z-20 flex h-full shrink-0 flex-col overflow-hidden border-r border-border bg-surface-elevated pt-10"
+      className="relative z-20 flex h-full shrink-0 flex-col overflow-hidden border-r border-border bg-surface-elevated"
     >
-      <div className="flex h-full w-64 flex-col">
+      <div style={{ width: SIDEBAR_WIDTH }} className="flex h-full flex-col">
         {/* Sidebar header */}
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <h2 className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
             Notes
           </h2>
           <div className="flex items-center gap-1">
-            {tags.length > 0 && (
-              <div ref={tagFilterRef} className="relative">
-                <button
-                  onClick={() => setIsTagFilterOpen(!isTagFilterOpen)}
-                  className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded-md transition-colors hover:bg-surface-hover hover:text-text ${
-                    filterTagId ? "text-text" : "text-text-muted"
-                  }`}
-                  title="Filtrer par tag"
-                >
-                  <Filter size={14} />
-                  {filterTagId && (
-                    <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-accent" />
-                  )}
-                </button>
-              </div>
-            )}
             <button
               onClick={toggleSort}
               className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
@@ -97,7 +65,7 @@ export function NotesSidebar({
               className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-hover hover:text-text"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              aria-label="New note"
+              aria-label="Nouvelle note"
             >
               <Plus size={14} />
             </motion.button>
@@ -106,64 +74,30 @@ export function NotesSidebar({
               className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              aria-label="Close sidebar"
+              aria-label="Fermer le panneau"
             >
               <ChevronLeft size={14} />
             </motion.button>
           </div>
         </div>
 
-        {/* Tag filter dropdown */}
-        <AnimatePresence>
-          {isTagFilterOpen && tags.length > 0 && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="overflow-hidden border-b border-border/50"
-            >
-              <div className="flex flex-wrap gap-1 px-3 py-2">
-                {filterTagId && (
-                  <button
-                    onClick={() => {
-                      setFilterTagId(null);
-                      setIsTagFilterOpen(false);
-                    }}
-                    className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
-                  >
-                    <X size={8} />
-                    Tous
-                  </button>
-                )}
-                {tags.map((tag) => (
-                  <button
-                    key={tag.id}
-                    onClick={() => {
-                      setFilterTagId(filterTagId === tag.id ? null : tag.id);
-                      setIsTagFilterOpen(false);
-                    }}
-                    className={`flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-0.5 text-[10px] transition-all ${
-                      filterTagId === tag.id
-                        ? "bg-surface-hover text-text"
-                        : "text-text-muted hover:bg-surface-hover hover:text-text-secondary"
-                    }`}
-                  >
-                    <span
-                      className="h-1.5 w-1.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: tag.color }}
-                    />
-                    {tag.name}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Local search filter */}
+        <div className="border-b border-border/50 px-3 py-2">
+          <div className="flex items-center gap-2 rounded-md bg-surface px-2 py-1.5">
+            <Search size={12} className="text-text-ghost" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Filtrer..."
+              className="flex-1 bg-transparent text-xs text-text outline-none placeholder:text-text-ghost"
+            />
+          </div>
+        </div>
 
         {/* Notes list */}
         <div className="flex-1 overflow-y-auto px-2 py-2">
-          {notes.length === 0 ? (
+          {filtered.length === 0 ? (
             <div className="px-2 py-8 text-center text-sm text-text-muted">
               Aucune note
             </div>
@@ -179,7 +113,6 @@ export function NotesSidebar({
                   key={note.id}
                   note={note}
                   isSelected={selectedNote?.id === note.id}
-                  tags={noteTagsCache[note.id] || []}
                   onSelect={selectNote}
                   onTogglePin={togglePin}
                   onRequestDelete={onRequestDelete}
@@ -195,7 +128,6 @@ export function NotesSidebar({
                   key={note.id}
                   note={note}
                   isSelected={selectedNote?.id === note.id}
-                  tags={noteTagsCache[note.id] || []}
                   onSelect={selectNote}
                   onTogglePin={togglePin}
                   onRequestDelete={onRequestDelete}

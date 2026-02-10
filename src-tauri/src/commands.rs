@@ -48,27 +48,6 @@ fn row_to_note(row: &Row) -> Result<Note, rusqlite::Error> {
     })
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Tag {
-    pub id: String,
-    pub name: String,
-    pub color: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct CreateTagPayload {
-    pub name: String,
-    pub color: String,
-}
-
-fn row_to_tag(row: &Row) -> Result<Tag, rusqlite::Error> {
-    Ok(Tag {
-        id: row.get(0)?,
-        name: row.get(1)?,
-        color: row.get(2)?,
-    })
-}
-
 fn map_err<T>(result: Result<T, rusqlite::Error>) -> Result<T, String> {
     result.map_err(|e| e.to_string())
 }
@@ -177,126 +156,12 @@ pub async fn toggle_pin_note(db: State<'_, Database>, id: String) -> Result<Note
     }).await
 }
 
-// ===== TAG COMMANDS =====
-
-#[tauri::command]
-pub async fn create_tag(db: State<'_, Database>, payload: CreateTagPayload) -> Result<Tag, String> {
-    spawn(&db, move |db| {
-        let id = Uuid::new_v4().to_string();
-        let conn = db.connection();
-        map_err(conn.execute(
-            "INSERT INTO tags (id, name, color) VALUES (?1, ?2, ?3)",
-            (&id, &payload.name, &payload.color),
-        ))?;
-        Ok(Tag { id, name: payload.name, color: payload.color })
-    }).await
-}
-
-#[tauri::command]
-pub async fn get_all_tags(db: State<'_, Database>) -> Result<Vec<Tag>, String> {
-    spawn(&db, move |db| {
-        let conn = db.connection();
-        let mut stmt = map_err(conn.prepare("SELECT id, name, color FROM tags ORDER BY name"))?;
-        let tags = map_err(stmt.query_map([], row_to_tag))?
-            .collect::<Result<Vec<_>, _>>();
-        map_err(tags)
-    }).await
-}
-
-#[tauri::command]
-pub async fn update_tag(db: State<'_, Database>, id: String, name: String, color: String) -> Result<Tag, String> {
-    spawn(&db, move |db| {
-        let conn = db.connection();
-        map_err(conn.execute(
-            "UPDATE tags SET name = ?1, color = ?2 WHERE id = ?3",
-            (&name, &color, &id),
-        ))?;
-        Ok(Tag { id, name, color })
-    }).await
-}
-
-#[tauri::command]
-pub async fn delete_tag(db: State<'_, Database>, id: String) -> Result<(), String> {
-    spawn(&db, move |db| {
-        let conn = db.connection();
-        map_err(conn.execute("DELETE FROM note_tags WHERE tag_id = ?1", [&id]))?;
-        map_err(conn.execute("DELETE FROM tags WHERE id = ?1", [&id]))?;
-        Ok(())
-    }).await
-}
-
-#[tauri::command]
-pub async fn add_tag_to_note(db: State<'_, Database>, note_id: String, tag_id: String) -> Result<(), String> {
-    spawn(&db, move |db| {
-        let conn = db.connection();
-        map_err(conn.execute(
-            "INSERT OR IGNORE INTO note_tags (note_id, tag_id) VALUES (?1, ?2)",
-            (&note_id, &tag_id),
-        ))?;
-        Ok(())
-    }).await
-}
-
-#[tauri::command]
-pub async fn remove_tag_from_note(db: State<'_, Database>, note_id: String, tag_id: String) -> Result<(), String> {
-    spawn(&db, move |db| {
-        let conn = db.connection();
-        map_err(conn.execute(
-            "DELETE FROM note_tags WHERE note_id = ?1 AND tag_id = ?2",
-            (&note_id, &tag_id),
-        ))?;
-        Ok(())
-    }).await
-}
-
-#[tauri::command]
-pub async fn get_tags_for_note(db: State<'_, Database>, note_id: String) -> Result<Vec<Tag>, String> {
-    spawn(&db, move |db| {
-        let conn = db.connection();
-        let mut stmt = map_err(conn.prepare(
-            "SELECT t.id, t.name, t.color FROM tags t
-             INNER JOIN note_tags nt ON t.id = nt.tag_id
-             WHERE nt.note_id = ?1
-             ORDER BY t.name"
-        ))?;
-        let tags = map_err(stmt.query_map([&*note_id], row_to_tag))?
-            .collect::<Result<Vec<_>, _>>();
-        map_err(tags)
-    }).await
-}
-
-#[tauri::command]
-pub async fn get_all_note_tags(db: State<'_, Database>) -> Result<Vec<(String, Tag)>, String> {
-    spawn(&db, move |db| {
-        let conn = db.connection();
-        let mut stmt = map_err(conn.prepare(
-            "SELECT nt.note_id, t.id, t.name, t.color FROM note_tags nt
-             INNER JOIN tags t ON t.id = nt.tag_id
-             ORDER BY t.name"
-        ))?;
-        let rows = map_err(stmt.query_map([], |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                Tag {
-                    id: row.get(1)?,
-                    name: row.get(2)?,
-                    color: row.get(3)?,
-                },
-            ))
-        }))?
-        .collect::<Result<Vec<_>, _>>();
-        map_err(rows)
-    }).await
-}
-
 // ===== EXPORT / IMPORT =====
 
 #[derive(Serialize, Deserialize)]
 pub struct ExportData {
     pub version: u32,
     pub notes: Vec<Note>,
-    pub tags: Vec<Tag>,
-    pub note_tags: Vec<(String, String)>,
 }
 
 #[tauri::command]
@@ -311,19 +176,7 @@ pub async fn export_all_data(db: State<'_, Database>) -> Result<String, String> 
             .collect::<Result<Vec<_>, _>>();
         let notes = map_err(notes)?;
 
-        let mut stmt = map_err(conn.prepare("SELECT id, name, color FROM tags ORDER BY name"))?;
-        let tags = map_err(stmt.query_map([], row_to_tag))?
-            .collect::<Result<Vec<_>, _>>();
-        let tags = map_err(tags)?;
-
-        let mut stmt = map_err(conn.prepare("SELECT note_id, tag_id FROM note_tags"))?;
-        let note_tags: Vec<(String, String)> = map_err(
-            stmt.query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-            })
-        )?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
-
-        let export = ExportData { version: 1, notes, tags, note_tags };
+        let export = ExportData { version: 1, notes };
         serde_json::to_string_pretty(&export).map_err(|e| e.to_string())
     }).await
 }
@@ -338,25 +191,6 @@ pub async fn import_all_data(db: State<'_, Database>, data: String) -> Result<St
         let tx = conn.transaction().map_err(|e| e.to_string())?;
 
         let mut notes_imported = 0u32;
-        let mut tags_imported = 0u32;
-
-        for tag in &export.tags {
-            let exists: bool = tx
-                .query_row(
-                    "SELECT COUNT(*) > 0 FROM tags WHERE id = ?1 OR name = ?2",
-                    (&tag.id, &tag.name),
-                    |row| row.get(0),
-                )
-                .map_err(|e| e.to_string())?;
-            if !exists {
-                tx.execute(
-                    "INSERT INTO tags (id, name, color) VALUES (?1, ?2, ?3)",
-                    (&tag.id, &tag.name, &tag.color),
-                )
-                .map_err(|e| e.to_string())?;
-                tags_imported += 1;
-            }
-        }
 
         for note in &export.notes {
             let exists: bool = tx
@@ -368,23 +202,16 @@ pub async fn import_all_data(db: State<'_, Database>, data: String) -> Result<St
                 .map_err(|e| e.to_string())?;
             if !exists {
                 tx.execute(
-                    "INSERT INTO notes (id, title, content, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-                    (&note.id, &note.title, &note.content, &note.created_at, &note.updated_at),
+                    "INSERT INTO notes (id, title, content, created_at, updated_at, is_pinned) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                    (&note.id, &note.title, &note.content, &note.created_at, &note.updated_at, &(note.is_pinned as i32)),
                 )
                 .map_err(|e| e.to_string())?;
                 notes_imported += 1;
             }
         }
 
-        for (note_id, tag_id) in &export.note_tags {
-            let _ = tx.execute(
-                "INSERT OR IGNORE INTO note_tags (note_id, tag_id) VALUES (?1, ?2)",
-                (note_id, tag_id),
-            );
-        }
-
         tx.commit().map_err(|e| e.to_string())?;
-        Ok(format!("{} notes et {} tags importés", notes_imported, tags_imported))
+        Ok(format!("{} notes importées", notes_imported))
     }).await
 }
 
@@ -407,22 +234,11 @@ mod tests {
         ).unwrap();
     }
 
-    fn insert_tag(db: &Database, id: &str, name: &str, color: &str) {
-        let conn = db.connection();
-        conn.execute(
-            "INSERT INTO tags (id, name, color) VALUES (?1, ?2, ?3)",
-            [id, name, color],
-        ).unwrap();
-    }
-
     #[test]
     fn test_db_init_creates_tables() {
         let db = setup_db();
         let conn = db.connection();
-        // Verify tables exist by querying them
         let _: i32 = conn.query_row("SELECT COUNT(*) FROM notes", [], |r| r.get(0)).unwrap();
-        let _: i32 = conn.query_row("SELECT COUNT(*) FROM tags", [], |r| r.get(0)).unwrap();
-        let _: i32 = conn.query_row("SELECT COUNT(*) FROM note_tags", [], |r| r.get(0)).unwrap();
     }
 
     #[test]
@@ -499,93 +315,6 @@ mod tests {
             "SELECT is_pinned FROM notes WHERE id = ?1", ["n1"], |r| r.get(0)
         ).unwrap();
         assert!(!pinned);
-    }
-
-    #[test]
-    fn test_insert_and_read_tag() {
-        let db = setup_db();
-        insert_tag(&db, "t1", "urgent", "#ff0000");
-
-        let conn = db.connection();
-        let mut stmt = conn.prepare("SELECT id, name, color FROM tags WHERE id = ?1").unwrap();
-        let tag = stmt.query_row(["t1"], row_to_tag).unwrap();
-
-        assert_eq!(tag.name, "urgent");
-        assert_eq!(tag.color, "#ff0000");
-    }
-
-    #[test]
-    fn test_note_tag_association() {
-        let db = setup_db();
-        insert_note(&db, "n1", "Note");
-        insert_tag(&db, "t1", "tag1", "#000");
-
-        let conn = db.connection();
-        conn.execute(
-            "INSERT INTO note_tags (note_id, tag_id) VALUES (?1, ?2)",
-            ["n1", "t1"],
-        ).unwrap();
-
-        let mut stmt = conn.prepare(
-            "SELECT t.id, t.name, t.color FROM tags t
-             INNER JOIN note_tags nt ON t.id = nt.tag_id
-             WHERE nt.note_id = ?1"
-        ).unwrap();
-        let tags: Vec<Tag> = stmt.query_map(["n1"], row_to_tag).unwrap()
-            .collect::<Result<Vec<_>, _>>().unwrap();
-
-        assert_eq!(tags.len(), 1);
-        assert_eq!(tags[0].name, "tag1");
-    }
-
-    #[test]
-    fn test_get_all_note_tags_batch() {
-        let db = setup_db();
-        insert_note(&db, "n1", "Note1");
-        insert_note(&db, "n2", "Note2");
-        insert_tag(&db, "t1", "tag1", "#111");
-        insert_tag(&db, "t2", "tag2", "#222");
-
-        let conn = db.connection();
-        conn.execute("INSERT INTO note_tags (note_id, tag_id) VALUES ('n1', 't1')", []).unwrap();
-        conn.execute("INSERT INTO note_tags (note_id, tag_id) VALUES ('n1', 't2')", []).unwrap();
-        conn.execute("INSERT INTO note_tags (note_id, tag_id) VALUES ('n2', 't1')", []).unwrap();
-
-        let mut stmt = conn.prepare(
-            "SELECT nt.note_id, t.id, t.name, t.color FROM note_tags nt
-             INNER JOIN tags t ON t.id = nt.tag_id ORDER BY t.name"
-        ).unwrap();
-        let rows: Vec<(String, Tag)> = stmt.query_map([], |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                Tag { id: row.get(1)?, name: row.get(2)?, color: row.get(3)? },
-            ))
-        }).unwrap().collect::<Result<Vec<_>, _>>().unwrap();
-
-        assert_eq!(rows.len(), 3);
-    }
-
-    #[test]
-    fn test_import_with_transaction_rollback_on_duplicate_tag_name() {
-        let db = setup_db();
-        insert_tag(&db, "existing", "mytag", "#000");
-
-        // Import data with a tag that has the same name — should skip it
-        let conn = db.connection();
-        let exists: bool = conn.query_row(
-            "SELECT COUNT(*) > 0 FROM tags WHERE name = ?1",
-            ["mytag"],
-            |row| row.get(0),
-        ).unwrap();
-        assert!(exists);
-
-        // Verify original tag is untouched
-        let tag: Tag = conn.query_row(
-            "SELECT id, name, color FROM tags WHERE name = ?1",
-            ["mytag"],
-            row_to_tag,
-        ).unwrap();
-        assert_eq!(tag.id, "existing");
     }
 
     #[test]

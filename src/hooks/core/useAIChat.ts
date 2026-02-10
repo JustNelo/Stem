@@ -13,7 +13,6 @@ const COMMANDS: Command[] = [
   { name: "corriger", description: "Corriger l'orthographe", action: "correct" },
   { name: "expliquer", description: "Expliquer simplement", action: "explain" },
   { name: "idees", description: "Générer des idées", action: "ideas" },
-  { name: "tags", description: "Suggérer des tags", action: "tags" },
   { name: "ask", description: "Poser une question", action: "ask" },
 ];
 

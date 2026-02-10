@@ -1,6 +1,5 @@
 import { create } from "zustand";
-import { safeInvoke, invokeVoid } from "@/lib/tauri";
-import { NoteSchema, NoteArraySchema } from "@/types/schemas";
+import { NoteRepository } from "@/services/db";
 import type { Note } from "@/types";
 
 const toast = (msg: string, type: "success" | "error" | "info" = "success") => {
@@ -32,7 +31,7 @@ export const useNotesStore = create<NotesState>((set) => ({
   fetchNotes: async () => {
     set({ isLoading: true });
     try {
-      const notes = await safeInvoke("get_all_notes", NoteArraySchema);
+      const notes = await NoteRepository.getAll();
       set({ notes, isLoading: false });
     } catch (error) {
       console.error("Failed to fetch notes:", error);
@@ -43,9 +42,7 @@ export const useNotesStore = create<NotesState>((set) => ({
 
   createNote: async () => {
     try {
-      const newNote = await safeInvoke("create_note", NoteSchema, {
-        payload: { title: "Sans titre", content: null },
-      });
+      const newNote = await NoteRepository.create();
       set((state) => ({ 
         notes: [newNote, ...state.notes],
         selectedNote: newNote 
@@ -61,9 +58,7 @@ export const useNotesStore = create<NotesState>((set) => ({
 
   updateNote: async (id, updates) => {
     try {
-      const updatedNote = await safeInvoke("update_note", NoteSchema, {
-        payload: { id, ...updates },
-      });
+      const updatedNote = await NoteRepository.update(id, updates);
       
       set((state) => ({
         notes: state.notes.map((note) => (note.id === id ? updatedNote : note)),
@@ -80,7 +75,7 @@ export const useNotesStore = create<NotesState>((set) => ({
 
   deleteNote: async (id) => {
     try {
-      await invokeVoid("delete_note", { id });
+      await NoteRepository.delete(id);
       set((state) => {
         const remainingNotes = state.notes.filter((note) => note.id !== id);
         const wasSelected = state.selectedNote?.id === id;
@@ -109,7 +104,7 @@ export const useNotesStore = create<NotesState>((set) => ({
 
   togglePin: async (id) => {
     try {
-      const updatedNote = await safeInvoke("toggle_pin_note", NoteSchema, { id });
+      const updatedNote = await NoteRepository.togglePin(id);
       set((state) => ({
         notes: state.notes.map((n) => (n.id === id ? updatedNote : n)),
         selectedNote: state.selectedNote?.id === id ? updatedNote : state.selectedNote,

@@ -1,45 +1,43 @@
-import { useEffect } from "react";
-import type { View } from "@/hooks/core/useEditorState";
-
-interface UseAppShortcutsOptions {
-  view: View;
-  onBack: () => void;
-  onToggleSettings: () => void;
-}
+import { useAppStore } from "@/store/useAppStore";
+import { useNotesStore } from "@/store/useNotesStore";
+import { useKeyboardShortcut } from "@/hooks/useKeyboardShortcut";
 
 /**
- * Registers global keyboard shortcuts:
+ * Registers all global keyboard shortcuts via useKeyboardShortcut.
+ *
+ * - Ctrl+B → toggle left sidebar
+ * - Ctrl+J → toggle right sidebar (AI)
+ * - Ctrl+K → toggle command palette
  * - Ctrl+, → toggle settings
- * - Escape / Ctrl+P (in editor view) → navigate back
+ * - Ctrl+N → create new note
+ * - Escape → close command palette / deselect note
  */
-export function useAppShortcuts({
-  view,
-  onBack,
-  onToggleSettings,
-}: UseAppShortcutsOptions) {
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Global: toggle settings
-      if (e.key === "," && e.ctrlKey) {
-        e.preventDefault();
-        onToggleSettings();
-        return;
-      }
+export function useAppShortcuts() {
+  const toggleLeft = useAppStore((s) => s.toggleLeftSidebar);
+  const toggleRight = useAppStore((s) => s.toggleRightSidebar);
+  const togglePalette = useAppStore((s) => s.toggleCommandPalette);
+  const toggleSettings = useAppStore((s) => s.toggleSettings);
+  const commandPaletteOpen = useAppStore((s) => s.commandPaletteOpen);
+  const setCommandPaletteOpen = useAppStore((s) => s.setCommandPaletteOpen);
+  const selectNote = useNotesStore((s) => s.selectNote);
+  const createNote = useNotesStore((s) => s.createNote);
 
-      // Editor-only shortcuts
-      if (view !== "editor") return;
-
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onBack();
-      }
-      if (e.key.toLowerCase() === "p" && e.ctrlKey) {
-        e.preventDefault();
-        onBack();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [view, onBack, onToggleSettings]);
+  useKeyboardShortcut([
+    { key: "b", ctrl: true, global: true, handler: () => toggleLeft() },
+    { key: "j", ctrl: true, global: true, handler: () => toggleRight() },
+    { key: "k", ctrl: true, global: true, handler: () => togglePalette() },
+    { key: ",", ctrl: true, global: true, handler: () => toggleSettings() },
+    { key: "n", ctrl: true, global: true, handler: () => createNote() },
+    {
+      key: "Escape",
+      global: true,
+      handler: () => {
+        if (commandPaletteOpen) {
+          setCommandPaletteOpen(false);
+        } else {
+          selectNote(null);
+        }
+      },
+    },
+  ]);
 }

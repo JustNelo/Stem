@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Trash2, ChevronRight, Send, FileText, Globe, PenLine,
-  Lightbulb, Brain, Tag, MessageCircle, Sparkles, Copy, Check,
+  Lightbulb, Brain, MessageCircle, Sparkles, Copy, Check,
 } from "lucide-react";
 import Markdown from "react-markdown";
 import { useAIChat } from "@/hooks/core/useAIChat";
@@ -14,7 +14,6 @@ const COMMAND_ICONS: Record<string, React.ReactNode> = {
   corriger: <PenLine size={14} />,
   expliquer: <Lightbulb size={14} />,
   idees: <Brain size={14} />,
-  tags: <Tag size={14} />,
   ask: <MessageCircle size={14} />,
 };
 

@@ -1,14 +1,15 @@
-import { useCallback, lazy, Suspense } from "react";
+import { lazy, Suspense } from "react";
 import { MantineProvider } from "@mantine/core";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import "@mantine/core/styles.css";
 
-import { CommandPalette } from "@/components/CommandPalette";
 import { TitleBar } from "@/components/TitleBar";
 import { Layout } from "@/components/layout";
 import { ToastContainer } from "@/components/ToastContainer";
+import { CommandPalette } from "@/components/CommandPalette";
 import { EditorHeader } from "@/components/features/EditorHeader";
 import { useSettingsStore, applyPersistedSettings } from "@/store/useSettingsStore";
+import { useAppStore } from "@/store/useAppStore";
 import { useAppInit } from "@/hooks/core/useAppInit";
 import { useEditorState } from "@/hooks/core/useEditorState";
 import { useAICommand } from "@/hooks/core/useAICommand";
@@ -22,29 +23,16 @@ const Settings = lazy(() => import("@/components/Settings").then((m) => ({ defau
 // Apply persisted settings (theme, font) to DOM on load
 applyPersistedSettings();
 
-const pageVariants = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -20 },
-};
-
-const pageTransition = {
-  type: "spring" as const,
-  stiffness: 300,
-  damping: 30,
-};
-
 function App() {
   const { isQuickCapture, handleQuickCaptureSave } = useAppInit();
   const hasCompletedOnboarding = useSettingsStore((s) => s.hasCompletedOnboarding);
+  const showSettings = useAppStore((s) => s.showSettings);
+  const setShowSettings = useAppStore((s) => s.setShowSettings);
+  const commandPaletteOpen = useAppStore((s) => s.commandPaletteOpen);
 
   const {
-    view,
-    showSettings,
-    setShowSettings,
     localTitle,
     selectedNote,
-    handleBack,
     handleTitleChange,
     handleContentChange,
     saveStatus,
@@ -52,14 +40,7 @@ function App() {
 
   const { isProcessing, handleExecuteCommand } = useAICommand();
 
-  const toggleSettings = useCallback(() => {
-    setShowSettings((prev) => !prev);
-  }, [setShowSettings]);
-
-  const closeSettings = useCallback(() => setShowSettings(false), [setShowSettings]);
-  const openSettings = useCallback(() => setShowSettings(true), [setShowSettings]);
-
-  useAppShortcuts({ view, onBack: handleBack, onToggleSettings: toggleSettings });
+  useAppShortcuts();
 
   // Render Quick Capture mode
   if (isQuickCapture) {
@@ -89,7 +70,7 @@ function App() {
       <MantineProvider>
         <TitleBar />
         <Suspense fallback={null}>
-          <Settings onClose={closeSettings} />
+          <Settings onClose={() => setShowSettings(false)} />
         </Suspense>
       </MantineProvider>
     );
@@ -98,62 +79,79 @@ function App() {
   return (
     <MantineProvider>
       <div className="flex h-screen w-screen flex-col overflow-hidden">
-        <TitleBar onOpenSettings={openSettings} />
+        <TitleBar onOpenSettings={() => setShowSettings(true)} />
         <ToastContainer />
 
-        <div className="relative flex-1 overflow-hidden">
-          <AnimatePresence mode="wait">
-            {view === "home" ? (
+        {/* Command Palette overlay */}
+        <AnimatePresence>
+          {commandPaletteOpen && (
+            <motion.div
+              key="palette"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="fixed inset-0 z-40 flex items-start justify-center bg-text/20 pt-24 backdrop-blur-sm"
+            >
               <motion.div
-                key="home"
-                className="absolute inset-0"
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={pageTransition}
+                initial={{ opacity: 0, y: -20, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.98 }}
+                transition={{ duration: 0.15 }}
+                className="w-full max-w-xl"
               >
                 <CommandPalette />
               </motion.div>
-            ) : (
-              <motion.div
-                key="editor"
-                className="absolute inset-0"
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={pageTransition}
-              >
-                <Layout
-                  showSidebar={true}
-                  saveStatus={saveStatus}
-                  onExecuteCommand={handleExecuteCommand}
-                  isProcessing={isProcessing}
-                >
-                  <EditorHeader
-                    localTitle={localTitle}
-                    onTitleChange={handleTitleChange}
-                    onBack={handleBack}
-                    noteId={selectedNote?.id}
-                    noteContent={selectedNote?.content}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* 3-column layout */}
+        <div className="relative flex-1 overflow-hidden">
+          <Layout
+            saveStatus={saveStatus}
+            onExecuteCommand={handleExecuteCommand}
+            isProcessing={isProcessing}
+          >
+            {selectedNote ? (
+              <>
+                <EditorHeader
+                  localTitle={localTitle}
+                  onTitleChange={handleTitleChange}
+                  noteContent={selectedNote.content}
+                />
+                <Suspense fallback={null}>
+                  <Editor
+                    key={selectedNote.id}
+                    initialContent={selectedNote.content || undefined}
+                    onChange={handleContentChange}
                   />
-                  {selectedNote && (
-                    <Suspense fallback={null}>
-                      <Editor
-                        key={selectedNote.id}
-                        initialContent={selectedNote.content || undefined}
-                        onChange={handleContentChange}
-                      />
-                    </Suspense>
-                  )}
-                </Layout>
-              </motion.div>
+                </Suspense>
+              </>
+            ) : (
+              <EmptyState />
             )}
-          </AnimatePresence>
+          </Layout>
         </div>
       </div>
     </MantineProvider>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
+      <h1 className="select-none text-6xl font-black uppercase leading-none tracking-tighter text-border opacity-50">
+        STEM
+      </h1>
+      <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+        Sélectionnez une note ou appuyez sur{" "}
+        <kbd className="rounded border border-border bg-surface-elevated px-1.5 py-0.5">
+          Ctrl+K
+        </kbd>{" "}
+        pour rechercher
+      </p>
+    </div>
   );
 }
 

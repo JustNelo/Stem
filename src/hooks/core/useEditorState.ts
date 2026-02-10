@@ -2,23 +2,14 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNotesStore } from "@/store/useNotesStore";
 import { useAutoSave } from "@/hooks/useAutoSave";
 
-export type View = "home" | "editor";
-
 /**
  * Manages editor-related state:
- * - View routing (synced with selectedNote)
- * - Settings toggle
  * - Local title with debounced save
  * - Content auto-save wiring
- * - Navigation (handleBack)
  */
 export function useEditorState() {
   const selectedNote = useNotesStore((s) => s.selectedNote);
   const updateNote = useNotesStore((s) => s.updateNote);
-  const selectNote = useNotesStore((s) => s.selectNote);
-
-  const [view, setView] = useState<View>("home");
-  const [showSettings, setShowSettings] = useState(false);
 
   // Local title state to avoid re-rendering the whole tree on each keystroke
   const [localTitle, setLocalTitle] = useState("");
@@ -31,21 +22,6 @@ export function useEditorState() {
       if (titleSaveTimer.current) clearTimeout(titleSaveTimer.current);
     };
   }, [selectedNote?.id]);
-
-  // Sync view with selected note
-  useEffect(() => {
-    if (selectedNote) {
-      setView("editor");
-    } else {
-      setView("home");
-    }
-  }, [selectedNote]);
-
-  // Navigation
-  const handleBack = useCallback(() => {
-    setView("home");
-    selectNote(null);
-  }, [selectNote]);
 
   // Title change with debounced save
   const handleTitleChange = useCallback(
@@ -83,12 +59,8 @@ export function useEditorState() {
   );
 
   return {
-    view,
-    showSettings,
-    setShowSettings,
     localTitle,
     selectedNote,
-    handleBack,
     handleTitleChange,
     handleContentChange,
     saveStatus,

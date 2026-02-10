@@ -78,7 +78,7 @@ export function DataTab() {
           <div>
             <p className="text-sm font-medium text-text">Exporter les données</p>
             <p className="text-xs text-text-muted">
-              Notes, tags et associations en JSON
+              Notes en JSON
             </p>
           </div>
         </div>

@@ -1,27 +1,26 @@
 import { useState, useMemo } from "react";
 import { useNotesStore } from "@/store/useNotesStore";
-import { useTagsStore } from "@/store/useTagsStore";
 import type { Note } from "@/types";
 
 export type SortBy = "date" | "title";
 
 /**
- * Handles notes filtering (by tag) and sorting (by date or title),
+ * Handles notes sorting (by date or title) and local search filter,
  * then splits results into pinned / unpinned groups.
  */
 export function useNotesFilter() {
   const notes = useNotesStore((s) => s.notes);
-  const noteTagsCache = useTagsStore((s) => s.noteTagsCache);
 
   const [sortBy, setSortBy] = useState<SortBy>("date");
-  const [filterTagId, setFilterTagId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const { pinned, unpinned } = useMemo(() => {
-    const filtered = notes
+  const { pinned, unpinned, filtered } = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+
+    const sorted = [...notes]
       .filter((note) => {
-        if (!filterTagId) return true;
-        const noteTags = noteTagsCache[note.id] || [];
-        return noteTags.some((t) => t.id === filterTagId);
+        if (!q) return true;
+        return (note.title || "").toLowerCase().includes(q);
       })
       .sort((a, b) => {
         if (sortBy === "title") {
@@ -32,7 +31,7 @@ export function useNotesFilter() {
 
     const pinnedNotes: Note[] = [];
     const unpinnedNotes: Note[] = [];
-    for (const note of filtered) {
+    for (const note of sorted) {
       if (note.is_pinned) {
         pinnedNotes.push(note);
       } else {
@@ -40,8 +39,8 @@ export function useNotesFilter() {
       }
     }
 
-    return { pinned: pinnedNotes, unpinned: unpinnedNotes };
-  }, [notes, noteTagsCache, filterTagId, sortBy]);
+    return { pinned: pinnedNotes, unpinned: unpinnedNotes, filtered: sorted };
+  }, [notes, searchQuery, sortBy]);
 
   const toggleSort = () => {
     setSortBy((prev) => (prev === "date" ? "title" : "date"));
@@ -49,11 +48,12 @@ export function useNotesFilter() {
 
   return {
     notes,
+    filtered,
     pinned,
     unpinned,
     sortBy,
     toggleSort,
-    filterTagId,
-    setFilterTagId,
+    searchQuery,
+    setSearchQuery,
   };
 }

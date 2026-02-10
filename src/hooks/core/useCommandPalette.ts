@@ -1,9 +1,14 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import Fuse from "fuse.js";
 import { useNotesStore } from "@/store/useNotesStore";
 import { useSettingsStore } from "@/store/useSettingsStore";
-import { useTagsStore } from "@/store/useTagsStore";
+import { useAppStore } from "@/store/useAppStore";
 import { extractPlainText } from "@/lib/utils/text";
 import type { Note } from "@/types";
+
+interface SearchableNote extends Note {
+  plainContent: string;
+}
 
 export function useCommandPalette() {
   const notes = useNotesStore((s) => s.notes);
@@ -11,41 +16,43 @@ export function useCommandPalette() {
   const createNote = useNotesStore((s) => s.createNote);
   const isLoading = useNotesStore((s) => s.isLoading);
   const userName = useSettingsStore((s) => s.userName);
-  const noteTagsCache = useTagsStore((s) => s.noteTagsCache);
-  const fetchTags = useTagsStore((s) => s.fetchTags);
-  const fetchAllNoteTags = useTagsStore((s) => s.fetchAllNoteTags);
+  const setCommandPaletteOpen = useAppStore((s) => s.setCommandPaletteOpen);
 
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Fetch tags + all note-tag associations on mount
-  useEffect(() => {
-    fetchTags();
-    fetchAllNoteTags();
-  }, [fetchTags, fetchAllNoteTags]);
+  // Build searchable notes with extracted plain text (memoized)
+  const searchableNotes = useMemo<SearchableNote[]>(
+    () =>
+      notes.map((note) => ({
+        ...note,
+        plainContent: extractPlainText(note.content),
+      })),
+    [notes],
+  );
+
+  // Configure Fuse.js with weighted keys
+  const fuse = useMemo(
+    () =>
+      new Fuse(searchableNotes, {
+        keys: [
+          { name: "title", weight: 0.7 },
+          { name: "plainContent", weight: 0.3 },
+        ],
+        threshold: 0.4,
+        ignoreLocation: true,
+        includeScore: true,
+      }),
+    [searchableNotes],
+  );
 
   const filteredNotes = useMemo(() => {
-    const q = query.toLowerCase().trim();
+    const q = query.trim();
     if (!q) return notes;
-
-    // Tag filter: #tagname
-    if (q.startsWith("#")) {
-      const tagQuery = q.slice(1);
-      return notes.filter((note) => {
-        const noteTags = noteTagsCache[note.id] || [];
-        return noteTags.some((t) => t.name.toLowerCase().includes(tagQuery));
-      });
-    }
-
-    // Full-text search: title + content
-    return notes.filter((note) => {
-      const titleMatch = (note.title || "").toLowerCase().includes(q);
-      if (titleMatch) return true;
-      return extractPlainText(note.content).toLowerCase().includes(q);
-    });
-  }, [notes, query, noteTagsCache]);
+    return fuse.search(q).map((result) => result.item as Note);
+  }, [notes, query, fuse]);
 
   const totalItems = filteredNotes.length;
 
@@ -68,6 +75,7 @@ export function useCommandPalette() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setQuery("");
+        setCommandPaletteOpen(false);
       }
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -81,19 +89,24 @@ export function useCommandPalette() {
         e.preventDefault();
         if (selectedIndex < filteredNotes.length) {
           selectNote(filteredNotes[selectedIndex]);
+          setCommandPaletteOpen(false);
         }
       }
       if (e.key === "n" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         createNote();
+        setCommandPaletteOpen(false);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [filteredNotes, selectedIndex, totalItems, selectNote, createNote]);
+  }, [filteredNotes, selectedIndex, totalItems, selectNote, createNote, setCommandPaletteOpen]);
 
-  const handleSelectNote = (note: Note) => selectNote(note);
+  const handleSelectNote = (note: Note) => {
+    selectNote(note);
+    setCommandPaletteOpen(false);
+  };
 
   return {
     query,
