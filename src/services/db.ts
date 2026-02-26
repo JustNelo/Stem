@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { safeInvoke, invokeVoid } from "@/lib/tauri";
 import { NoteSchema, NoteArraySchema } from "@/types/schemas";
 import type { Note } from "@/types";
@@ -41,10 +42,10 @@ export const NoteRepository = {
  */
 export const DataRepository = {
   async exportAll(): Promise<string> {
-    return safeInvoke("export_all_data", (await import("zod")).z.string());
+    return safeInvoke("export_all_data", z.string());
   },
 
   async importAll(data: string): Promise<string> {
-    return safeInvoke("import_all_data", (await import("zod")).z.string(), { data });
+    return safeInvoke("import_all_data", z.string(), { data });
   },
 };

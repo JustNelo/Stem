@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 
 interface IconButtonProps {
@@ -22,29 +23,27 @@ export function IconButton({
   onMouseDown,
   disabled,
 }: IconButtonProps) {
-  const sizeClass = size === "sm" ? "h-6 w-6" : "h-8 w-8";
-  const variantClass =
+  const dangerClass =
     variant === "danger"
       ? "text-text-muted hover:bg-red-500/10 hover:text-red-500"
-      : "text-text-muted hover:bg-surface-hover hover:text-text";
+      : undefined;
 
   return (
-    <motion.button
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      onMouseDown={onMouseDown}
-      disabled={disabled}
-      className={cn(
-        "flex cursor-pointer items-center justify-center rounded-md transition-colors",
-        sizeClass,
-        variantClass,
-        className,
-      )}
-    >
-      {children}
-    </motion.button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size={size === "sm" ? "icon-sm" : "icon"}
+          aria-label={label}
+          onClick={onClick}
+          onMouseDown={onMouseDown}
+          disabled={disabled}
+          className={cn("text-text-muted hover:text-text", dangerClass, className)}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }

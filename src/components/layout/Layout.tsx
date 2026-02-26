@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Menu, Sparkles } from "lucide-react";
+import { IconButton } from "@/components/ui/IconButton";
 import { useNotesStore } from "@/store/useNotesStore";
 import { useAppStore } from "@/store/useAppStore";
 import { useGitSync } from "@/hooks/useGitSync";
@@ -64,16 +65,21 @@ export function Layout({
 
       {/* Sidebar toggle button (visible when closed) */}
       {!leftOpen && (
-        <motion.button
+        <motion.div
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -10 }}
-          onClick={() => setLeftOpen(true)}
-          className="fixed left-3 top-14 z-30 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-border bg-surface-elevated text-text-muted shadow-sm transition-colors hover:bg-surface-hover hover:text-text"
-          title="Ouvrir le panneau (Ctrl+B)"
+          className="fixed left-3 top-13 z-30"
         >
-          <Menu size={16} />
-        </motion.button>
+          <IconButton
+            label="Ouvrir le panneau (Ctrl+B)"
+            size="md"
+            onClick={() => setLeftOpen(true)}
+            className="border border-border bg-surface-elevated shadow-sm"
+          >
+            <Menu size={16} />
+          </IconButton>
+        </motion.div>
       )}
 
       {/* CENTER COLUMN — Editor */}
@@ -91,16 +97,21 @@ export function Layout({
 
       {/* AI Sidebar toggle button (visible when closed) */}
       {!rightOpen && (
-        <motion.button
+        <motion.div
           initial={{ opacity: 0, x: 10 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 10 }}
-          onClick={() => setRightOpen(true)}
-          className="fixed right-3 top-14 z-30 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-border bg-surface-elevated text-text-muted shadow-sm transition-colors hover:bg-surface-hover hover:text-text"
-          title="Ouvrir le copilot (Ctrl+J)"
+          className="fixed right-3 top-13 z-30"
         >
-          <Sparkles size={14} />
-        </motion.button>
+          <IconButton
+            label="Ouvrir le copilot (Ctrl+J)"
+            size="md"
+            onClick={() => setRightOpen(true)}
+            className="border border-border bg-surface-elevated shadow-sm"
+          >
+            <Sparkles size={14} />
+          </IconButton>
+        </motion.div>
       )}
 
       {/* RIGHT COLUMN — AI sidebar */}

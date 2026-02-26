@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[derive(Serialize)]
 struct OllamaRequest {
@@ -23,6 +24,94 @@ struct OllamaModelsResponse {
     models: Vec<OllamaModelInfo>,
 }
 
+// ===== Chat API (supports tool use / function calling) =====
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ChatMessage {
+    pub role: String,
+    pub content: String,
+}
+
+#[derive(Serialize)]
+struct OllamaChatRequest {
+    model: String,
+    messages: Vec<ChatMessage>,
+    tools: Vec<Value>,
+    stream: bool,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct ToolFunction {
+    pub name: String,
+    pub arguments: Value,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct ToolCall {
+    pub function: ToolFunction,
+}
+
+#[derive(Deserialize)]
+struct OllamaChatMessage {
+    pub content: String,
+    pub tool_calls: Option<Vec<ToolCall>>,
+}
+
+#[derive(Deserialize)]
+struct OllamaChatResponse {
+    pub message: OllamaChatMessage,
+}
+
+#[derive(Serialize)]
+pub struct ChatResponse {
+    pub content: String,
+    pub tool_calls: Option<Vec<ToolCall>>,
+}
+
+#[tauri::command]
+pub async fn ollama_chat(
+    messages: Vec<ChatMessage>,
+    tools: Vec<Value>,
+    model: Option<String>,
+    ollama_url: Option<String>,
+) -> Result<ChatResponse, String> {
+    let model = model.unwrap_or_else(|| "mistral".to_string());
+    let base_url = ollama_url.unwrap_or_else(|| "http://localhost:11434".to_string());
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let request = OllamaChatRequest {
+        model,
+        messages,
+        tools,
+        stream: false,
+    };
+
+    let response = client
+        .post(format!("{}/api/chat", base_url))
+        .json(&request)
+        .send()
+        .await
+        .map_err(|e| format!("Erreur connexion Ollama: {}. Assurez-vous qu'Ollama est lancé.", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!("Ollama a retourné une erreur: {}", response.status()));
+    }
+
+    let chat_response: OllamaChatResponse = response
+        .json()
+        .await
+        .map_err(|e| format!("Erreur parsing réponse: {}", e))?;
+
+    Ok(ChatResponse {
+        content: chat_response.message.content.trim().to_string(),
+        tool_calls: chat_response.message.tool_calls,
+    })
+}
+
 #[tauri::command]
 pub async fn summarize_note(
     content: String,
@@ -35,7 +124,10 @@ pub async fn summarize_note(
 
     let model = model.unwrap_or_else(|| "mistral".to_string());
     let base_url = ollama_url.unwrap_or_else(|| "http://localhost:11434".to_string());
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .map_err(|e| e.to_string())?;
 
     let request = OllamaRequest {
         model,

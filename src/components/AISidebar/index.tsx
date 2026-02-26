@@ -4,7 +4,10 @@ import {
   Trash2, ChevronRight, Send, FileText, Globe, PenLine,
   Lightbulb, Brain, MessageCircle, Sparkles, Copy, Check,
 } from "lucide-react";
+import { IconButton } from "@/components/ui/IconButton";
+import { Button } from "@/components/ui/button";
 import Markdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useAIChat } from "@/hooks/core/useAIChat";
@@ -91,6 +94,7 @@ export function AISidebar({
     inputRef,
     messagesEndRef,
     ollamaUrl,
+    isProcessing: chatProcessing,
     handleSubmit,
     handleKeyDown,
     clearConversation,
@@ -123,26 +127,13 @@ export function AISidebar({
           </div>
           <div className="flex items-center gap-1">
             {messages.length > 0 && (
-              <motion.button
-                onClick={clearConversation}
-                className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                aria-label="Effacer la conversation"
-                title="Effacer la conversation"
-              >
+              <IconButton label="Effacer la conversation" onClick={clearConversation}>
                 <Trash2 size={12} />
-              </motion.button>
+              </IconButton>
             )}
-            <motion.button
-              onClick={onClose}
-              className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              aria-label="Close AI panel"
-            >
+            <IconButton label="Fermer le copilot (Ctrl+J)" onClick={onClose}>
               <ChevronRight size={12} />
-            </motion.button>
+            </IconButton>
           </div>
         </div>
 
@@ -185,6 +176,13 @@ export function AISidebar({
                       <div className="rounded-lg bg-text-secondary/10 px-3 py-2">
                         <code className="text-xs text-text-secondary">{msg.content}</code>
                       </div>
+                    ) : msg.type === "tool_call" ? (
+                      <div className="flex items-center gap-2 rounded-md border border-border/50 bg-surface px-3 py-1.5">
+                        <Brain size={10} className="shrink-0 text-text-muted" />
+                        <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                          {msg.content}
+                        </span>
+                      </div>
                     ) : msg.type === "error" ? (
                       <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2">
                         <p className="text-xs text-red-400">{msg.content}</p>
@@ -194,7 +192,7 @@ export function AISidebar({
                     )}
                   </motion.div>
                 ))}
-                {isProcessing && (
+                {chatProcessing && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -256,18 +254,18 @@ export function AISidebar({
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Tapez / pour les commandes..."
-                disabled={isProcessing}
+                disabled={chatProcessing}
                 className="flex-1 bg-transparent text-sm text-text outline-none placeholder:text-text-ghost disabled:opacity-50"
               />
-              <motion.button
+              <Button
                 type="submit"
-                disabled={!input.trim() || isProcessing}
-                className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-30"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                variant="ghost"
+                size="icon-sm"
+                disabled={!input.trim() || chatProcessing}
+                className="text-text-muted hover:text-text"
               >
                 <Send size={14} />
-              </motion.button>
+              </Button>
             </div>
           </form>
         </div>
@@ -330,6 +328,7 @@ function AssistantMessage({ content, command }: { content: string; command?: str
       </div>
       <div className="ai-markdown text-[13px] leading-relaxed text-text-secondary [&_h1]:mb-2 [&_h1]:mt-4 [&_h1]:text-base [&_h1]:font-semibold [&_h1]:text-text [&_h2]:mb-1.5 [&_h2]:mt-3 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-text [&_h3]:mb-1.5 [&_h3]:mt-2 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:text-text [&_li]:mb-1 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_strong]:font-semibold [&_strong]:text-text [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5">
         <Markdown
+          rehypePlugins={[rehypeSanitize]}
           components={{
             code({ className, children, ...props }) {
               const match = /language-(\w+)/.exec(className || "");

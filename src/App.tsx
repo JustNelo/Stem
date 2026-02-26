@@ -1,7 +1,5 @@
 import { lazy, Suspense, useState, useCallback } from "react";
-import { MantineProvider } from "@mantine/core";
 import { AnimatePresence, motion } from "framer-motion";
-import "@mantine/core/styles.css";
 
 import { TitleBar } from "@/components/TitleBar";
 import { Layout } from "@/components/layout";
@@ -52,100 +50,100 @@ function App() {
   // Render Quick Capture mode
   if (isQuickCapture) {
     return (
-      <MantineProvider>
-        <Suspense fallback={null}>
-          <QuickCapture onSave={handleQuickCaptureSave} />
-        </Suspense>
-      </MantineProvider>
+      <Suspense fallback={null}>
+        <QuickCapture onSave={handleQuickCaptureSave} />
+      </Suspense>
     );
   }
 
   // Render Onboarding on first launch
   if (!hasCompletedOnboarding) {
     return (
-      <MantineProvider>
-        <Suspense fallback={null}>
-          <Onboarding />
-        </Suspense>
-      </MantineProvider>
-    );
-  }
-
-  // Render Settings as overlay
-  if (showSettings) {
-    return (
-      <MantineProvider>
-        <TitleBar />
-        <Suspense fallback={null}>
-          <Settings onClose={() => setShowSettings(false)} />
-        </Suspense>
-      </MantineProvider>
+      <Suspense fallback={null}>
+        <Onboarding />
+      </Suspense>
     );
   }
 
   return (
-    <MantineProvider>
-      <div className="flex h-screen w-screen flex-col overflow-hidden">
-        <TitleBar onOpenSettings={() => setShowSettings(true)} />
-        <ToastContainer />
+    <div className="flex h-screen w-screen flex-col overflow-hidden">
+      <TitleBar onOpenSettings={() => setShowSettings(true)} />
+      <ToastContainer />
 
-        {/* Command Palette overlay */}
-        <AnimatePresence>
-          {commandPaletteOpen && (
-            <motion.div
-              key="palette"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="fixed inset-0 z-40 flex items-start justify-center bg-text/20 pt-24 backdrop-blur-sm"
-            >
-              <motion.div
-                initial={{ opacity: 0, y: -20, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -20, scale: 0.98 }}
-                transition={{ duration: 0.15 }}
-                className="w-full max-w-xl"
-              >
-                <CommandPalette />
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* 3-column layout */}
-        <div className="relative flex-1 overflow-hidden">
-          <Layout
-            saveStatus={saveStatus}
-            onExecuteCommand={handleExecuteCommand}
-            isProcessing={isProcessing}
+      {/* Settings overlay — rendered on top without unmounting the app tree */}
+      <AnimatePresence>
+        {showSettings && (
+          <motion.div
+            key="settings"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-50"
           >
-            {selectedNote ? (
-              <>
-                <EditorHeader
-                  localTitle={localTitle}
-                  onTitleChange={handleTitleChange}
-                  noteContent={selectedNote.content}
-                  onReview={openReview}
-                />
-                <Suspense fallback={null}>
-                  <Editor
-                    key={selectedNote.id}
-                    initialContent={selectedNote.content || undefined}
-                    onChange={handleContentChange}
-                  />
-                </Suspense>
-              </>
-            ) : (
-              <EmptyState />
-            )}
-          </Layout>
-        </div>
+            <Suspense fallback={null}>
+              <Settings onClose={() => setShowSettings(false)} />
+            </Suspense>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-        {/* Review Mode modal */}
-        <ReviewMode isOpen={reviewOpen} onClose={closeReview} />
+      {/* Command Palette overlay */}
+      <AnimatePresence>
+        {commandPaletteOpen && (
+          <motion.div
+            key="palette"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-40 flex items-start justify-center bg-text/20 pt-24 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.98 }}
+              transition={{ duration: 0.15 }}
+              className="w-full max-w-xl"
+            >
+              <CommandPalette />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 3-column layout */}
+      <div className="relative flex-1 overflow-hidden">
+        <Layout
+          saveStatus={saveStatus}
+          onExecuteCommand={handleExecuteCommand}
+          isProcessing={isProcessing}
+        >
+          {selectedNote ? (
+            <>
+              <EditorHeader
+                localTitle={localTitle}
+                onTitleChange={handleTitleChange}
+                noteContent={selectedNote.content}
+                onReview={openReview}
+              />
+              <Suspense fallback={null}>
+                <Editor
+                  key={selectedNote.id}
+                  initialContent={selectedNote.content || undefined}
+                  onChange={handleContentChange}
+                />
+              </Suspense>
+            </>
+          ) : (
+            <EmptyState />
+          )}
+        </Layout>
       </div>
-    </MantineProvider>
+
+      {/* Review Mode modal */}
+      <ReviewMode isOpen={reviewOpen} onClose={closeReview} />
+    </div>
   );
 }
 

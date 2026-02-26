@@ -33,7 +33,7 @@ pub struct UpdateNotePayload {
 fn current_timestamp() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
+        .unwrap_or_default()
         .as_secs() as i64
 }
 

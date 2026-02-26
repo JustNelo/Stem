@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { Pin, Trash2 } from "lucide-react";
 import { formatRelativeTime } from "@/lib/format";
+import { IconButton } from "@/components/ui/IconButton";
 import type { Note } from "@/types";
 
 interface NoteListItemProps {
@@ -36,30 +37,23 @@ export const NoteListItem = memo(function NoteListItem({
         </span>
       </button>
       <div className="mr-2 flex shrink-0 items-center gap-0.5">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onTogglePin(note.id);
-          }}
-          className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded transition-all hover:bg-surface-hover hover:text-text ${
-            note.is_pinned
-              ? "text-text-secondary"
-              : "text-text-ghost opacity-0 group-hover:opacity-100"
-          }`}
-          title={note.is_pinned ? "Désépingler" : "Épingler"}
-        >
-          <Pin size={12} className={note.is_pinned ? "fill-current" : ""} />
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onRequestDelete(note.id);
-          }}
-          className="flex h-6 w-6 cursor-pointer items-center justify-center rounded opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
-          title="Supprimer"
-        >
-          <Trash2 size={12} />
-        </button>
+        <span className={note.is_pinned ? "text-text-secondary" : "opacity-0 group-hover:opacity-100"}>
+          <IconButton
+            label={note.is_pinned ? "Désépingler" : "Épingler"}
+            onClick={(e) => { e.stopPropagation(); onTogglePin(note.id); }}
+          >
+            <Pin size={12} className={note.is_pinned ? "fill-current" : ""} />
+          </IconButton>
+        </span>
+        <span className="opacity-0 group-hover:opacity-100">
+          <IconButton
+            variant="danger"
+            label="Supprimer"
+            onClick={(e) => { e.stopPropagation(); onRequestDelete(note.id); }}
+          >
+            <Trash2 size={12} />
+          </IconButton>
+        </span>
       </div>
     </div>
   );

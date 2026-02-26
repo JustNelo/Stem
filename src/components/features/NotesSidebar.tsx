@@ -3,6 +3,7 @@ import { Plus, ChevronLeft, ArrowDownAZ, CalendarArrowDown, Search } from "lucid
 import { useNotesStore } from "@/store/useNotesStore";
 import { useNotesFilter } from "@/hooks/core/useNotesFilter";
 import { NoteListItem } from "@/components/features/NoteListItem";
+import { IconButton } from "@/components/ui/IconButton";
 
 const SIDEBAR_WIDTH = 260;
 
@@ -49,35 +50,22 @@ export function NotesSidebar({
             Notes
           </h2>
           <div className="flex items-center gap-1">
-            <button
+            <IconButton
+              label={sortBy === "date" ? "Trier par titre" : "Trier par date"}
               onClick={toggleSort}
-              className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
-              title={sortBy === "date" ? "Trier par titre" : "Trier par date"}
             >
               {sortBy === "date" ? (
                 <CalendarArrowDown size={14} />
               ) : (
                 <ArrowDownAZ size={14} />
               )}
-            </button>
-            <motion.button
-              onClick={() => createNote()}
-              className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-hover hover:text-text"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              aria-label="Nouvelle note"
-            >
+            </IconButton>
+            <IconButton label="Nouvelle note (Ctrl+N)" onClick={() => createNote()}>
               <Plus size={14} />
-            </motion.button>
-            <motion.button
-              onClick={onClose}
-              className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              aria-label="Fermer le panneau"
-            >
+            </IconButton>
+            <IconButton label="Fermer le panneau (Ctrl+B)" onClick={onClose}>
               <ChevronLeft size={14} />
-            </motion.button>
+            </IconButton>
           </div>
         </div>
 
