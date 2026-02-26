@@ -2,28 +2,19 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ArrowLeft, Sparkles } from "lucide-react";
 import { useSettingsStore } from "@/store/useSettingsStore";
-import type { ThemeId, FontId } from "@/types/settings";
 import { StepWrapper } from "@/components/Onboarding/steps/StepWrapper";
 import { WelcomeStep } from "@/components/Onboarding/steps/WelcomeStep";
-import { ThemeStep } from "@/components/Onboarding/steps/ThemeStep";
-import { FontStep } from "@/components/Onboarding/steps/FontStep";
 import { SummaryStep } from "@/components/Onboarding/steps/SummaryStep";
 
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 2;
 
 export function Onboarding() {
-  const theme = useSettingsStore((s) => s.theme);
-  const fontFamily = useSettingsStore((s) => s.fontFamily);
   const setUserName = useSettingsStore((s) => s.setUserName);
-  const setTheme = useSettingsStore((s) => s.setTheme);
-  const setFontFamily = useSettingsStore((s) => s.setFontFamily);
   const completeOnboarding = useSettingsStore((s) => s.completeOnboarding);
 
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
   const [name, setName] = useState("");
-  const [selectedTheme, setSelectedTheme] = useState<ThemeId>(theme);
-  const [selectedFont, setSelectedFont] = useState<FontId>(fontFamily);
 
   const goNext = () => {
     if (step < TOTAL_STEPS - 1) {
@@ -39,16 +30,6 @@ export function Onboarding() {
     }
   };
 
-  const handleThemeSelect = (id: ThemeId) => {
-    setSelectedTheme(id);
-    setTheme(id);
-  };
-
-  const handleFontSelect = (id: FontId) => {
-    setSelectedFont(id);
-    setFontFamily(id);
-  };
-
   const handleFinish = () => {
     if (name.trim()) {
       setUserName(name.trim());
@@ -62,7 +43,7 @@ export function Onboarding() {
   };
 
   return (
-    <div className="flex min-h-screen w-screen flex-col overflow-y-auto bg-surface pt-8">
+    <div className="flex min-h-screen w-screen flex-col overflow-y-auto bg-surface-deep pt-8">
       <div className="texture-overlay pointer-events-none fixed inset-0 z-50" />
 
       <div className="relative z-10 m-auto w-full max-w-lg px-6 py-12">
@@ -74,7 +55,7 @@ export function Onboarding() {
               className="h-1 flex-1 rounded-full"
               initial={false}
               animate={{
-                backgroundColor: i <= step ? "var(--color-text)" : "var(--color-border)",
+                backgroundColor: i <= step ? "var(--color-accent)" : "var(--color-border-metallic)",
               }}
               transition={{ duration: 0.3 }}
             />
@@ -91,17 +72,7 @@ export function Onboarding() {
             )}
             {step === 1 && (
               <StepWrapper key="step-1" direction={direction}>
-                <ThemeStep selected={selectedTheme} onSelect={handleThemeSelect} />
-              </StepWrapper>
-            )}
-            {step === 2 && (
-              <StepWrapper key="step-2" direction={direction}>
-                <FontStep selected={selectedFont} onSelect={handleFontSelect} />
-              </StepWrapper>
-            )}
-            {step === 3 && (
-              <StepWrapper key="step-3" direction={direction}>
-                <SummaryStep name={name} theme={selectedTheme} font={selectedFont} />
+                <SummaryStep name={name} />
               </StepWrapper>
             )}
           </AnimatePresence>
@@ -128,7 +99,7 @@ export function Onboarding() {
               <motion.button
                 onClick={goNext}
                 disabled={!canProceed()}
-                className="flex cursor-pointer items-center gap-2 rounded-lg bg-text px-5 py-2.5 text-sm font-medium text-surface transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-30"
+                className="btn-sculpted flex cursor-pointer items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium text-text transition-all hover:text-accent disabled:cursor-not-allowed disabled:opacity-30"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -138,7 +109,7 @@ export function Onboarding() {
             ) : (
               <motion.button
                 onClick={handleFinish}
-                className="flex cursor-pointer items-center gap-2 rounded-lg bg-text px-5 py-2.5 text-sm font-medium text-surface transition-all hover:opacity-90"
+                className="btn-sculpted flex cursor-pointer items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium text-text transition-all hover:text-accent"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >

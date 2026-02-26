@@ -95,7 +95,7 @@ export function ReviewMode({ isOpen, onClose }: ReviewModeProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-40 flex items-center justify-center bg-text/20 backdrop-blur-sm"
+        className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       >
         <motion.div
@@ -104,12 +104,12 @@ export function ReviewMode({ isOpen, onClose }: ReviewModeProps) {
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
           transition={{ duration: 0.2 }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-lg rounded-xl border border-border bg-surface-elevated shadow-xl"
+          className="w-full max-w-lg rounded-xl border border-border-metallic bg-surface-elevated shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03),0_8px_32px_rgba(0,0,0,0.5)]"
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <div className="flex items-center justify-between border-b border-border-metallic/50 px-5 py-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-hover">
+              <div className="btn-sculpted flex h-8 w-8 items-center justify-center">
                 <GraduationCap size={16} className="text-text-secondary" />
               </div>
               <div>
@@ -154,7 +154,7 @@ export function ReviewMode({ isOpen, onClose }: ReviewModeProps) {
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.08 }}
-                      className="rounded-lg border border-border bg-surface"
+                      className="rounded-lg border border-border-metallic/50 bg-surface"
                     >
                       <button
                         onClick={() => setExpandedIndex(isExpanded ? null : i)}
@@ -210,14 +210,14 @@ export function ReviewMode({ isOpen, onClose }: ReviewModeProps) {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between border-t border-border px-5 py-3">
+          <div className="flex items-center justify-between border-t border-border-metallic/50 px-5 py-3">
             <span className="text-[11px] text-text-ghost">
               {questions.length > 0 ? `${questions.length} question${questions.length > 1 ? "s" : ""}` : ""}
             </span>
             <button
               onClick={generateQuestions}
               disabled={isGenerating || !selectedNote?.content}
-              className="flex cursor-pointer items-center gap-2 rounded-lg bg-surface-hover px-3 py-1.5 text-xs font-medium text-text transition-colors hover:bg-border disabled:opacity-50"
+              className="btn-sculpted flex cursor-pointer items-center gap-2 px-3 py-1.5 text-xs font-medium text-text-secondary transition-all duration-200 hover:text-text disabled:opacity-50"
             >
               <RefreshCw size={11} className={isGenerating ? "animate-spin" : ""} />
               Régénérer

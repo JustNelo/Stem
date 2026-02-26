@@ -1,16 +1,12 @@
 import { motion } from "framer-motion";
-import { THEMES, FONTS } from "@/types/settings";
-import type { ThemeId, FontId } from "@/types/settings";
+import { useSettingsStore } from "@/store/useSettingsStore";
 
 interface SummaryStepProps {
   name: string;
-  theme: ThemeId;
-  font: FontId;
 }
 
-export function SummaryStep({ name, theme, font }: SummaryStepProps) {
-  const themeInfo = THEMES.find((t) => t.id === theme);
-  const fontInfo = FONTS.find((f) => f.id === font);
+export function SummaryStep({ name }: SummaryStepProps) {
+  const ollamaModel = useSettingsStore((s) => s.ollamaModel);
 
   return (
     <div className="flex h-full flex-col justify-center">
@@ -23,7 +19,7 @@ export function SummaryStep({ name, theme, font }: SummaryStepProps) {
           Tout est prêt{name ? `, ${name}` : ""} !
         </h1>
         <p className="mt-3 text-text-secondary">
-          Voici un résumé de vos préférences.
+          Votre espace de notes intelligent est configuré.
         </p>
       </motion.div>
 
@@ -37,41 +33,32 @@ export function SummaryStep({ name, theme, font }: SummaryStepProps) {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                Thème
-              </span>
-              <div className="flex items-center gap-2">
-                <div
-                  className="h-4 w-4 rounded-full border border-border"
-                  style={{ backgroundColor: themeInfo?.preview.surface }}
-                />
-                <span className="text-sm font-medium text-text">
-                  {themeInfo?.name}
-                </span>
-              </div>
-            </div>
-
-            <div className="h-px bg-border" />
-
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                Police
-              </span>
-              <span
-                className="text-sm font-medium text-text"
-                style={{ fontFamily: fontInfo?.cssFamily }}
-              >
-                {fontInfo?.name}
-              </span>
-            </div>
-
-            <div className="h-px bg-border" />
-
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                IA
+                IA locale
               </span>
               <span className="text-sm font-medium text-text">
-                Ollama (Mistral)
+                Ollama ({ollamaModel})
+              </span>
+            </div>
+
+            <div className="h-px bg-border" />
+
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                Recherche sémantique
+              </span>
+              <span className="text-sm font-medium text-text">
+                nomic-embed-text
+              </span>
+            </div>
+
+            <div className="h-px bg-border" />
+
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                Stockage
+              </span>
+              <span className="text-sm font-medium text-text">
+                SQLite local
               </span>
             </div>
           </div>

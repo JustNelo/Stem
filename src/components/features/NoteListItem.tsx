@@ -32,10 +32,10 @@ export const NoteListItem = memo(function NoteListItem({
     <div
       draggable
       onDragStart={handleDragStart}
-      className={`group relative flex w-full items-center rounded-md transition-all duration-150 ${
+      className={`group relative flex w-full items-center rounded-lg transition-all duration-200 ${
         isSelected
-          ? "bg-surface-hover/80"
-          : "hover:bg-surface-hover/50"
+          ? "bg-surface-hover shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_0_10px_rgba(180,180,195,0.04)]"
+          : "metallic-halo"
       }`}
     >
       <button
@@ -45,7 +45,7 @@ export const NoteListItem = memo(function NoteListItem({
       >
         <FileText
           size={14}
-          className={`mt-0.5 shrink-0 ${isSelected ? "text-text-secondary" : "text-text-ghost"}`}
+          className={`mt-0.5 shrink-0 transition-colors duration-200 ${isSelected ? "text-accent" : "text-text-ghost group-hover:text-text-muted"}`}
         />
         <div className="min-w-0 flex-1">
           <div className="truncate text-[13px] font-medium tracking-tight text-text">

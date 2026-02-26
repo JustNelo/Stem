@@ -73,7 +73,7 @@ export function Layout({
             label="Ouvrir le panneau (Ctrl+B)"
             size="md"
             onClick={() => setLeftOpen(true)}
-            className="border border-border bg-surface-elevated shadow-sm"
+            className="btn-sculpted border border-border-metallic"
           >
             <Menu size={16} />
           </IconButton>
@@ -87,7 +87,7 @@ export function Layout({
         </div>
         {/* Status bar */}
         {selectedNote && (
-          <div className="flex w-full shrink-0 justify-end border-t border-border/50 px-4 py-1.5">
+          <div className="flex w-full shrink-0 justify-end border-t border-border-metallic/30 px-4 py-1.5">
             <StatusBar saveStatus={saveStatus} wordCount={wordCount} gitStatus={gitSyncStatus} />
           </div>
         )}
@@ -105,7 +105,7 @@ export function Layout({
             label="Ouvrir le copilot (Ctrl+J)"
             size="md"
             onClick={() => setRightOpen(true)}
-            className="border border-border bg-surface-elevated shadow-sm"
+            className="btn-sculpted border border-border-metallic"
           >
             <Sparkles size={14} />
           </IconButton>

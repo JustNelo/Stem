@@ -30,9 +30,9 @@ export function CommandPalette() {
   } = useCommandPalette();
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-border bg-surface-elevated shadow-xl">
+    <div className="relative overflow-hidden rounded-xl border border-border-metallic bg-surface-elevated shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03),0_8px_32px_rgba(0,0,0,0.5)]">
       {/* Search input */}
-      <div className="flex items-center border-b border-border px-4 py-3">
+      <div className="flex items-center border-b border-border-metallic/50 px-4 py-3">
         <Search size={18} className="text-text-muted" />
         <input
           ref={inputRef}
@@ -42,7 +42,7 @@ export function CommandPalette() {
           placeholder="Rechercher une note..."
           className="w-full bg-transparent px-3 font-sans text-sm text-text outline-none placeholder:text-text-ghost"
         />
-        <kbd className="rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[10px] text-text-muted">
+        <kbd className="rounded border border-border-metallic bg-surface-deep px-1.5 py-0.5 font-mono text-[10px] text-text-muted">
           ESC
         </kbd>
       </div>
@@ -75,7 +75,7 @@ export function CommandPalette() {
                     className={cn(
                       "group flex w-full cursor-pointer items-center justify-between rounded-lg p-3 transition-all duration-200",
                       selectedIndex === index
-                        ? "bg-surface-hover"
+                        ? "bg-surface-hover shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]"
                         : "hover:bg-surface-hover"
                     )}
                   >
@@ -124,7 +124,7 @@ export function CommandPalette() {
                         className={cn(
                           "group flex w-full cursor-pointer items-center justify-between rounded-lg p-3 transition-all duration-200",
                           selectedIndex === combinedIndex
-                            ? "bg-surface-hover"
+                            ? "bg-surface-hover shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]"
                             : "hover:bg-surface-hover"
                         )}
                       >

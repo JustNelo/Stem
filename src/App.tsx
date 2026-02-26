@@ -1,12 +1,15 @@
 import { lazy, Suspense, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Plus } from "lucide-react";
 
 import { TitleBar } from "@/components/TitleBar";
+import { AppLoader } from "@/components/ui/AppLoader";
 import { Layout } from "@/components/layout";
 import { ToastContainer } from "@/components/ToastContainer";
 import { CommandPalette } from "@/components/CommandPalette";
 import { EditorHeader } from "@/components/features/EditorHeader";
-import { useSettingsStore, applyPersistedSettings } from "@/store/useSettingsStore";
+import { useSettingsStore } from "@/store/useSettingsStore";
+import { useNotesStore } from "@/store/useNotesStore";
 import { useAppStore } from "@/store/useAppStore";
 import { useAppInit } from "@/hooks/core/useAppInit";
 import { useEditorState } from "@/hooks/core/useEditorState";
@@ -20,9 +23,6 @@ const Editor = lazy(() => import("@/components/Editor"));
 const QuickCapture = lazy(() => import("@/components/QuickCapture").then((m) => ({ default: m.QuickCapture })));
 const Onboarding = lazy(() => import("@/components/Onboarding").then((m) => ({ default: m.Onboarding })));
 const Settings = lazy(() => import("@/components/Settings").then((m) => ({ default: m.Settings })));
-
-// Apply persisted settings (theme, font) to DOM on load
-applyPersistedSettings();
 
 function App() {
   const { isQuickCapture, handleQuickCaptureSave } = useAppInit();
@@ -52,7 +52,7 @@ function App() {
   // Render Quick Capture mode
   if (isQuickCapture) {
     return (
-      <Suspense fallback={null}>
+      <Suspense fallback={<AppLoader />}>
         <QuickCapture onSave={handleQuickCaptureSave} />
       </Suspense>
     );
@@ -61,7 +61,7 @@ function App() {
   // Render Onboarding on first launch
   if (!hasCompletedOnboarding) {
     return (
-      <Suspense fallback={null}>
+      <Suspense fallback={<AppLoader />}>
         <Onboarding />
       </Suspense>
     );
@@ -97,7 +97,7 @@ function App() {
             transition={{ duration: 0.15 }}
             className="fixed inset-0 z-50"
           >
-            <Suspense fallback={null}>
+            <Suspense fallback={<AppLoader />}>
               <Settings onClose={() => setShowSettings(false)} />
             </Suspense>
           </motion.div>
@@ -144,7 +144,7 @@ function App() {
                 folderId={selectedNote.folder_id}
                 onReview={openReview}
               />
-              <Suspense fallback={null}>
+              <Suspense fallback={<AppLoader />}>
                 <Editor
                   key={selectedNote.id}
                   initialContent={selectedNote.content || undefined}
@@ -165,18 +165,35 @@ function App() {
 }
 
 function EmptyState() {
+  const userName = useSettingsStore((s) => s.userName);
+  const createNote = useNotesStore((s) => s.createNote);
+
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+    <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
       <span className="select-none text-3xl font-bold uppercase tracking-tighter text-border">
         STEM
       </span>
-      <p className="text-[11px] text-text-muted">
-        Sélectionnez une note ou appuyez sur{" "}
-        <kbd className="rounded bg-surface-hover px-1.5 py-0.5 font-mono text-[10px]">
-          Ctrl+K
-        </kbd>{" "}
-        pour rechercher
-      </p>
+      {userName && (
+        <p className="text-sm text-text-secondary">
+          Bonjour, {userName}
+        </p>
+      )}
+      <div className="flex flex-col items-center gap-2">
+        <button
+          onClick={() => createNote()}
+          className="flex cursor-pointer items-center gap-2 rounded-lg bg-surface-elevated px-4 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-hover hover:text-text"
+        >
+          <Plus size={14} />
+          Nouvelle note
+        </button>
+        <p className="text-[11px] text-text-muted">
+          ou{" "}
+          <kbd className="rounded bg-surface-hover px-1.5 py-0.5 font-mono text-[10px]">
+            Ctrl+K
+          </kbd>{" "}
+          pour rechercher
+        </p>
+      </div>
     </div>
   );
 }

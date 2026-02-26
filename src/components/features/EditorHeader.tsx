@@ -35,9 +35,9 @@ export const EditorHeader = memo(function EditorHeader({
       {/* Breadcrumb */}
       {folderName && (
         <div className="flex items-center gap-1 text-[11px] text-text-muted">
-          <Folder size={11} />
+          <Folder size={11} className="text-accent/50" />
           <span>{folderName}</span>
-          <ChevronRight size={10} />
+          <ChevronRight size={10} className="text-text-ghost" />
         </div>
       )}
 
@@ -58,7 +58,7 @@ export const EditorHeader = memo(function EditorHeader({
         {onReview && (
           <button
             onClick={onReview}
-            className="flex cursor-pointer items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[11px] transition-colors hover:bg-surface-hover hover:text-text"
+            className="btn-sculpted flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] transition-all duration-200 hover:text-text"
             title="Mode révision"
           >
             <GraduationCap size={10} />

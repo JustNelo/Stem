@@ -50,7 +50,7 @@ export function TitleBar({ onOpenSettings }: TitleBarProps) {
   return (
     <div
       onMouseDown={handleDrag}
-      className="fixed left-0 right-0 top-0 z-50 flex h-8 cursor-default items-center justify-between bg-surface border-b border-border/50"
+      className="fixed left-0 right-0 top-0 z-50 flex h-8 cursor-default items-center justify-between bg-surface-deep border-b border-border-metallic/30"
     >
       {/* Left side — draggable area */}
       <div
@@ -68,7 +68,7 @@ export function TitleBar({ onOpenSettings }: TitleBarProps) {
               onOpenSettings();
             }}
             onMouseDown={(e) => e.stopPropagation()}
-            className="flex h-6 w-6 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
+            className="flex h-6 w-6 items-center justify-center rounded-full text-text-muted transition-all duration-200 hover:bg-surface-hover hover:text-accent hover:shadow-[0_0_8px_rgba(180,180,195,0.06)]"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             aria-label="Settings"
@@ -78,14 +78,14 @@ export function TitleBar({ onOpenSettings }: TitleBarProps) {
           </motion.button>
         )}
 
-        <div className="mx-1 h-3 w-px bg-border" />
+        <div className="mx-1 h-3 w-px bg-border-metallic/40" />
         <motion.button
           onClick={(e) => {
             e.stopPropagation();
             handleMinimize();
           }}
           onMouseDown={(e) => e.stopPropagation()}
-          className="flex h-6 w-6 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
+          className="flex h-6 w-6 items-center justify-center rounded-full text-text-muted transition-all duration-200 hover:bg-surface-hover hover:text-text hover:shadow-[0_0_6px_rgba(180,180,195,0.05)]"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           aria-label="Minimize"
@@ -99,7 +99,7 @@ export function TitleBar({ onOpenSettings }: TitleBarProps) {
             handleMaximize();
           }}
           onMouseDown={(e) => e.stopPropagation()}
-          className="flex h-6 w-6 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
+          className="flex h-6 w-6 items-center justify-center rounded-full text-text-muted transition-all duration-200 hover:bg-surface-hover hover:text-text hover:shadow-[0_0_6px_rgba(180,180,195,0.05)]"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           aria-label="Maximize"
@@ -113,7 +113,7 @@ export function TitleBar({ onOpenSettings }: TitleBarProps) {
             handleClose();
           }}
           onMouseDown={(e) => e.stopPropagation()}
-          className="flex h-6 w-6 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-red-500/10 hover:text-red-600"
+          className="flex h-6 w-6 items-center justify-center rounded-full text-text-muted transition-all duration-200 hover:bg-red-500/10 hover:text-red-400 hover:shadow-[0_0_8px_rgba(239,68,68,0.1)]"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           aria-label="Close"

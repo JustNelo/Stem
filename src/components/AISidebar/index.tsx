@@ -6,7 +6,6 @@ import {
   Plus, Eye, Search, Pencil, FilePlus, Minus,
 } from "lucide-react";
 import { IconButton } from "@/components/ui/IconButton";
-import { Button } from "@/components/ui/button";
 import Markdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -111,18 +110,18 @@ export function AISidebar({
         opacity: isOpen ? 1 : 0,
       }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="relative z-20 flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-surface-elevated pt-8"
+      className="relative z-20 flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-surface-deep panel-acrylic pt-8"
     >
       {/* Resize handle */}
       <div
         onMouseDown={handleMouseDown}
-        className="absolute left-0 top-0 z-30 h-full w-1 cursor-col-resize transition-colors hover:bg-text-muted/30"
+        className="absolute left-0 top-0 z-30 h-full w-1 cursor-col-resize transition-colors hover:bg-border-metallic/50"
       />
       <div className="flex h-full w-full flex-col">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div className="flex items-center gap-2 leading-none">
-            <Sparkles size={12} className="text-text-secondary" />
+            <Sparkles size={12} className="text-accent/60" />
             <h2 className="font-mono text-[10px] uppercase tracking-widest text-text-muted leading-none">
               Copilot
             </h2>
@@ -227,7 +226,7 @@ export function AISidebar({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 10 }}
-                className="absolute bottom-full left-3 right-3 mb-2 overflow-hidden rounded-lg border border-border bg-surface-elevated shadow-lg"
+                className="absolute bottom-full left-3 right-3 mb-2 overflow-hidden rounded-xl border border-border-metallic bg-surface-elevated shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03),0_4px_16px_rgba(0,0,0,0.35)]"
               >
                 <div className="max-h-48 overflow-y-auto py-1">
                   {filteredCommands.map((cmd, index) => (
@@ -254,7 +253,7 @@ export function AISidebar({
           </AnimatePresence>
 
           <form onSubmit={handleSubmit}>
-            <div className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 focus-within:border-text-muted">
+            <div className="flex items-center gap-2 rounded-xl border border-border-metallic/40 bg-surface-deep px-3 py-2.5 transition-all duration-200 focus-within:border-border-metallic focus-within:shadow-[0_0_12px_rgba(180,180,195,0.04)]">
               <input
                 ref={inputRef}
                 type="text"
@@ -265,15 +264,13 @@ export function AISidebar({
                 disabled={chatProcessing}
                 className="flex-1 bg-transparent text-sm text-text outline-none placeholder:text-text-ghost disabled:opacity-50"
               />
-              <Button
+              <button
                 type="submit"
-                variant="ghost"
-                size="icon-sm"
                 disabled={!input.trim() || chatProcessing}
-                className="text-text-muted hover:text-text"
+                className="btn-sculpted flex h-7 w-7 cursor-pointer items-center justify-center text-text-muted transition-colors hover:text-text disabled:cursor-not-allowed disabled:opacity-30"
               >
-                <Send size={14} />
-              </Button>
+                <Send size={13} />
+              </button>
             </div>
           </form>
         </div>
@@ -292,17 +289,17 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
   };
 
   return (
-    <div className="my-2 overflow-hidden rounded-lg border border-border">
-      <div className="flex items-center justify-between bg-surface-hover/60 px-3 py-1">
-        <span className="font-mono text-[11px] font-medium text-text-muted">
+    <div className="my-2 overflow-hidden rounded-xl border border-border-metallic shadow-[inset_0_1px_0_0_rgba(255,255,255,0.02),0_2px_8px_rgba(0,0,0,0.2)]">
+      <div className="flex items-center justify-between border-b border-border bg-surface-hover/40 px-3 py-1.5">
+        <span className="font-mono text-[10px] font-medium lowercase tracking-wide text-text-muted">
           {language}
         </span>
         <button
           onClick={handleCopy}
-          className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-text-ghost transition-colors hover:text-text-muted"
+          className="btn-sculpted flex h-5 w-5 cursor-pointer items-center justify-center text-text-ghost transition-colors hover:text-text-muted"
           title="Copier le code"
         >
-          {copied ? <Check size={10} /> : <Copy size={10} />}
+          {copied ? <Check size={9} /> : <Copy size={9} />}
         </button>
       </div>
       <SyntaxHighlighter
@@ -311,11 +308,11 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
         PreTag="div"
         customStyle={{
           margin: 0,
-          padding: "12px",
+          padding: "12px 14px",
           fontSize: "12px",
-          lineHeight: "1.6",
+          lineHeight: "1.7",
           background: "transparent",
-          backgroundColor: "var(--color-surface)",
+          backgroundColor: "var(--color-surface-deep)",
           overflowX: "auto",
         }}
       >

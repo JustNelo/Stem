@@ -90,22 +90,42 @@
 }
 
 @theme {
-  /* Light theme - Clean Productivity */
-  --color-surface: #fafaf9;
-  --color-surface-elevated: #ffffff;
-  --color-surface-hover: #f5f5f4;
-  --color-border: #e7e5e4;
-  --color-border-subtle: #d6d3d1;
-  --color-text: #1c1917;
-  --color-text-secondary: #57534e;
-  --color-text-muted: #a8a29e;
-  --color-text-ghost: #d6d3d1;
-  --color-accent: #18181b;
-  
+  /* ═══════════════════════════════════════════
+     STEM — Deep Obsidian Metallic
+     Inspired by brushed dark metal & obsidian
+     ═══════════════════════════════════════════ */
+
+  /* Surfaces — obsidian depth progression */
+  --color-surface: #0e0e10;
+  --color-surface-elevated: #161618;
+  --color-surface-hover: #222226;
+  --color-surface-deep: #0a0a0c;
+
+  /* Borders — metallic edges */
+  --color-border: #1e1e22;
+  --color-border-subtle: #2a2a30;
+  --color-border-metallic: #3a3a42;
+
+  /* Text — silver hierarchy */
+  --color-text: #d8d8dc;
+  --color-text-secondary: #9a9aa0;
+  --color-text-muted: #5c5c64;
+  --color-text-ghost: #32323a;
+
+  /* Accent — brushed silver */
+  --color-accent: #b8b8c0;
+
+  /* Metallic highlights */
+  --color-metallic-shine: rgba(200, 200, 210, 0.08);
+  --color-metallic-glow: rgba(180, 180, 195, 0.06);
+  --color-metallic-edge: rgba(255, 255, 255, 0.04);
+
+  /* Spellcheck / errors — deep copper-bordeaux */
+  --color-spellcheck: #6b3a3a;
+
   --font-sans: "Satoshi", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: ui-monospace, "SF Mono", "Consolas", monospace;
-  
-  /* Spacing for breathing room */
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Consolas", monospace;
+
   --spacing-comfortable: 2rem;
 }
 
@@ -114,7 +134,7 @@
 }
 
 ::selection {
-  background: rgba(28, 25, 23, 0.1);
+  background: rgba(180, 180, 210, 0.15);
   color: var(--color-text);
 }
 
@@ -122,14 +142,15 @@ body {
   font-family: var(--font-sans);
   background: var(--color-surface);
   color: var(--color-text);
-  line-height: 1.5;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: -0.011em;
 }
 
+/* ═══ Scrollbars — metallic thin rail ═══ */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -138,129 +159,136 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background: transparent;
-  border-radius: 2px;
-  transition: background 0.2s;
+  border-radius: 3px;
+  transition: background 0.3s ease;
 }
 
 *:hover > ::-webkit-scrollbar-thumb,
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-border-subtle);
+  background: var(--color-border-metallic);
 }
 
 ::-webkit-scrollbar-thumb:active {
   background: var(--color-text-muted);
 }
 
-/* Hide horizontal scrollbars by default */
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
 
-/* Subtle texture for depth (optional) */
+/* ═══ Brushed metal grain texture ═══ */
 .texture-overlay {
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)'/%3E%3C/svg%3E");
+  opacity: 0.028;
+  mix-blend-mode: overlay;
   pointer-events: none;
 }
 
-/* ===== THEME: Dark ===== */
-[data-theme="dark"] {
-  --color-surface: #18181b;
-  --color-surface-elevated: #27272a;
-  --color-surface-hover: #3f3f46;
-  --color-border: #3f3f46;
-  --color-border-subtle: #52525b;
-  --color-text: #fafaf9;
-  --color-text-secondary: #a1a1aa;
-  --color-text-muted: #71717a;
-  --color-text-ghost: #52525b;
-  --color-accent: #e4e4e7;
-
-  ::selection {
-    background: rgba(250, 250, 249, 0.15);
-  }
+/* ═══ Directional lighting — desk lamp effect ═══ */
+.texture-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 80% 50% at 30% 0%,
+    rgba(200, 200, 220, 0.03) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
 }
 
-/* ===== THEME: Sepia ===== */
-[data-theme="sepia"] {
-  --color-surface: #f5f0e8;
-  --color-surface-elevated: #faf6ef;
-  --color-surface-hover: #ede6d8;
-  --color-border: #ddd4c2;
-  --color-border-subtle: #c9bea8;
-  --color-text: #433422;
-  --color-text-secondary: #6b5b47;
-  --color-text-muted: #8b7355;
-  --color-text-ghost: #c9bea8;
-  --color-accent: #5c4a32;
-
-  ::selection {
-    background: rgba(67, 52, 34, 0.12);
-  }
-}
-
-/* ===== THEME: Nord ===== */
-[data-theme="nord"] {
-  --color-surface: #2e3440;
-  --color-surface-elevated: #3b4252;
-  --color-surface-hover: #434c5e;
-  --color-border: #434c5e;
-  --color-border-subtle: #4c566a;
-  --color-text: #eceff4;
-  --color-text-secondary: #d8dee9;
-  --color-text-muted: #81a1c1;
-  --color-text-ghost: #4c566a;
-  --color-accent: #88c0d0;
-
-  ::selection {
-    background: rgba(136, 192, 208, 0.2);
-  }
-}
-
-/* ===== THEME: Sakura ===== */
-[data-theme="sakura"] {
-  --color-surface: #fef2f4;
-  --color-surface-elevated: #fff7f8;
-  --color-surface-hover: #fce4e8;
-  --color-border: #f5d0d6;
-  --color-border-subtle: #e8b4be;
-  --color-text: #4a2030;
-  --color-text-secondary: #7a3f55;
-  --color-text-muted: #c48a9e;
-  --color-text-ghost: #e8b4be;
-  --color-accent: #e8a0b4;
-
-  ::selection {
-    background: rgba(232, 160, 180, 0.2);
-  }
-}
-
-/* ===== THEME: Ocean ===== */
-[data-theme="ocean"] {
-  --color-surface: #0f1b2d;
-  --color-surface-elevated: #162236;
-  --color-surface-hover: #1e2d44;
-  --color-border: #1e2d44;
-  --color-border-subtle: #2a3f5f;
-  --color-text: #e0e8f0;
-  --color-text-secondary: #94a8c4;
-  --color-text-muted: #5a7499;
-  --color-text-ghost: #2a3f5f;
-  --color-accent: #38bdf8;
-
-  ::selection {
-    background: rgba(56, 189, 248, 0.15);
-  }
-}
-
-/* Utility classes for ghost buttons */
+/* ═══ Ghost buttons — sculpted metallic feel ═══ */
 .btn-ghost {
-  @apply transition-all duration-200 ease-out rounded-lg px-3 py-1.5;
+  @apply rounded-lg px-3 py-1.5;
   @apply text-text-secondary hover:text-text;
   @apply hover:bg-surface-hover;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 0 0 0 var(--color-metallic-shine);
 }
 
-/* Tight tracking for modern look */
+.btn-ghost:hover {
+  box-shadow:
+    inset 0 1px 0 0 var(--color-metallic-edge),
+    0 0 8px var(--color-metallic-glow);
+}
+
 .tracking-tighter {
   letter-spacing: -0.025em;
+}
+
+/* ═══ Metallic hover halo for interactive items ═══ */
+.metallic-halo {
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.metallic-halo:hover {
+  background: var(--color-surface-hover);
+  box-shadow:
+    inset 0 1px 0 0 var(--color-metallic-edge),
+    0 0 12px rgba(180, 180, 195, 0.04);
+}
+
+/* ═══ Sculpted button — premium tactile controls ═══ */
+.btn-sculpted {
+  position: relative;
+  border-radius: 0.5rem;
+  background: linear-gradient(
+    180deg,
+    var(--color-surface-hover) 0%,
+    var(--color-surface-elevated) 100%
+  );
+  border: 1px solid var(--color-border-metallic);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
+    0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-sculpted:hover {
+  background: linear-gradient(
+    180deg,
+    var(--color-border-subtle) 0%,
+    var(--color-surface-hover) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+    0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.btn-sculpted:active {
+  background: var(--color-surface-elevated);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* ═══ Metallic text gradient — for headings ═══ */
+.text-metallic {
+  background: linear-gradient(
+    160deg,
+    #d0d0d8 0%,
+    #a8a8b0 40%,
+    #c0c0c8 70%,
+    #b0b0b8 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ═══ Acrylic deep panel effect ═══ */
+.panel-acrylic {
+  background: linear-gradient(
+    180deg,
+    rgba(14, 14, 16, 0.95) 0%,
+    rgba(10, 10, 12, 0.98) 100%
+  );
+  backdrop-filter: blur(20px) saturate(120%);
+}
+
+/* ═══ Fluid global transitions ═══ */
+*,
+*::before,
+*::after {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }

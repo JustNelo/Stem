@@ -199,7 +199,7 @@ export function NotesSidebar({
         opacity: isOpen ? 1 : 0,
       }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="relative z-20 flex h-full shrink-0 flex-col overflow-hidden border-r border-border bg-surface-elevated"
+      className="relative z-20 flex h-full shrink-0 flex-col overflow-hidden border-r border-border bg-surface-deep panel-acrylic"
     >
       <div style={{ width: SIDEBAR_WIDTH }} className="flex h-full flex-col pt-8">
         {/* Sidebar header */}
@@ -211,6 +211,7 @@ export function NotesSidebar({
             <IconButton
               label={sortBy === "date" ? "Trier par titre" : "Trier par date"}
               onClick={toggleSort}
+              className="btn-sculpted"
             >
               {sortBy === "date" ? (
                 <CalendarArrowDown size={14} />
@@ -218,10 +219,10 @@ export function NotesSidebar({
                 <ArrowDownAZ size={14} />
               )}
             </IconButton>
-            <IconButton label="Nouveau dossier" onClick={handleCreateFolder}>
+            <IconButton label="Nouveau dossier" onClick={handleCreateFolder} className="btn-sculpted">
               <FolderPlus size={14} />
             </IconButton>
-            <IconButton label="Nouvelle note (Ctrl+N)" onClick={() => createNote()}>
+            <IconButton label="Nouvelle note (Ctrl+N)" onClick={() => createNote()} className="btn-sculpted">
               <Plus size={14} />
             </IconButton>
             <IconButton label="Fermer le panneau (Ctrl+B)" onClick={onClose}>
@@ -232,7 +233,7 @@ export function NotesSidebar({
 
         {/* Local search filter */}
         <div className="border-t border-b border-border px-3 py-2">
-          <div className="flex items-center gap-2 rounded-md bg-surface px-2 py-1.5">
+          <div className="flex items-center gap-2 rounded-lg border border-border-metallic/30 bg-surface-deep px-2.5 py-1.5 transition-all duration-200 focus-within:border-border-metallic focus-within:shadow-[0_0_8px_rgba(180,180,195,0.04)]">
             <Search size={12} className="text-text-ghost" />
             <input
               type="text"

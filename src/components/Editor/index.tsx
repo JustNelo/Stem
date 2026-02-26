@@ -8,8 +8,8 @@ import { filterSuggestionItems } from "@blocknote/core/extensions";
 import { useCreateBlockNote, SuggestionMenuController, getDefaultReactSlashMenuItems } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import { codeBlockOptions } from "@blocknote/code-block";
-import { useSettingsStore } from "@/store/useSettingsStore";
 import { AIChatService } from "@/services/ai-chat";
+import { useSettingsStore } from "@/store/useSettingsStore";
 import type { ModelMessage } from "ai";
 import { AI_SLASH_COMMANDS, createAISlashMenuItem } from "@/lib/slash-commands";
 
@@ -24,8 +24,6 @@ interface EditorProps {
   onChange?: (content: string) => void;
 }
 
-const DARK_THEMES = new Set(["dark", "nord", "ocean"]);
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function safeParse(content: string | undefined): any[] | undefined {
   if (!content) return undefined;
@@ -38,7 +36,6 @@ function safeParse(content: string | undefined): any[] | undefined {
 }
 
 export function Editor({ initialContent, onChange }: EditorProps) {
-  const theme = useSettingsStore((s) => s.theme);
   const ollamaModel = useSettingsStore((s) => s.ollamaModel);
   const ollamaUrl = useSettingsStore((s) => s.ollamaUrl);
 
@@ -46,8 +43,6 @@ export function Editor({ initialContent, onChange }: EditorProps) {
     schema,
     initialContent: safeParse(initialContent),
   });
-
-  const editorTheme = DARK_THEMES.has(theme) ? "dark" : "light";
 
   // AI execution handler for slash commands — streams via AI SDK
   const handleAIExecute = useCallback(
@@ -85,7 +80,7 @@ export function Editor({ initialContent, onChange }: EditorProps) {
 
   return (
     <div className="editor-wrapper">
-      <BlockNoteView editor={editor} onChange={handleChange} theme={editorTheme} slashMenu={false}>
+      <BlockNoteView editor={editor} onChange={handleChange} theme="dark" slashMenu={false}>
         <SuggestionMenuController
           triggerCharacter="/"
           getItems={getSlashMenuItems}

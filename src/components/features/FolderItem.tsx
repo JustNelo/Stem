@@ -132,10 +132,10 @@ export const FolderItem = memo(function FolderItem({
       <div
         draggable
         onDragStart={handleDragStart}
-        className={`group flex w-full items-center rounded-md transition-all duration-150 ${
+        className={`group flex w-full items-center rounded-lg transition-all duration-200 ${
           isDragOver
-            ? "bg-accent/10 ring-1 ring-accent/30"
-            : "hover:bg-surface-hover/50"
+            ? "bg-accent/10 ring-1 ring-accent/20 shadow-[0_0_10px_rgba(180,180,195,0.06)]"
+            : "metallic-halo"
         }`}
       >
         <button
@@ -149,7 +149,7 @@ export const FolderItem = memo(function FolderItem({
               isExpanded ? "rotate-90" : ""
             }`}
           />
-          <FolderIcon size={14} className="shrink-0 text-text-muted" />
+          <FolderIcon size={14} className="shrink-0 text-text-muted transition-colors duration-200 group-hover:text-accent/70" />
           {isRenaming ? (
             <input
               ref={inputRef}
@@ -193,7 +193,7 @@ export const FolderItem = memo(function FolderItem({
 
       {/* Children: sub-folders + notes */}
       {isExpanded && hasChildren && (
-        <div className="ml-4 border-l border-border/50 pl-1">
+        <div className="ml-4 border-l border-border-metallic/30 pl-1">
           {/* Recursive sub-folders */}
           {folder.children.map((child) => (
             <FolderItem

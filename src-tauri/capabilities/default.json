@@ -19,6 +19,7 @@
     "fs:default",
     "fs:allow-write-text-file",
     "fs:allow-read-text-file",
-    "updater:default"
+    "updater:default",
+    "core:app:allow-version"
   ]
 }
