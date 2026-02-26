@@ -43,7 +43,7 @@ const DEFAULT_SETTINGS = {
   theme: "light" as ThemeId,
   fontFamily: "satoshi" as FontId,
   fontSize: "medium" as FontSize,
-  ollamaModel: "mistral",
+  ollamaModel: "qwen2.5",
   ollamaUrl: "http://localhost:11434",
   embeddingModel: "nomic-embed-text",
   gitRepoPath: "",
@@ -101,6 +101,11 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: "stem-settings",
+      onRehydrateStorage: () => (state) => {
+        if (state && state.ollamaModel === "mistral") {
+          state.ollamaModel = "qwen2.5:32b";
+        }
+      },
     }
   )
 );

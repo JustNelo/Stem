@@ -1,45 +1,11 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Channel, invoke } from "@tauri-apps/api/core";
+import type { ModelMessage } from "ai";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useNotesStore } from "@/store/useNotesStore";
 import { useToastStore } from "@/store/useToastStore";
 import { AIChatService, type ChatTurn } from "@/services/ai-chat";
 import type { StoreCallbacks } from "@/services/ai-tools-dispatcher";
 import { extractPlainText } from "@/lib/utils/text";
-
-interface StreamChunk {
-  token: string;
-  done: boolean;
-}
-
-/**
- * Streams a single response from Ollama via the ollama_chat_stream Tauri command.
- * Calls onToken for each incremental token and resolves with the full text on done.
- */
-async function streamOllamaResponse(
-  messages: Array<{ role: string; content: string }>,
-  model: string,
-  ollamaUrl: string,
-  onToken: (token: string) => void,
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    let accumulated = "";
-    const channel = new Channel<StreamChunk>();
-
-    channel.onmessage = (chunk) => {
-      if (chunk.done) {
-        resolve(accumulated);
-        return;
-      }
-      accumulated += chunk.token;
-      onToken(chunk.token);
-    };
-
-    invoke("ollama_chat_stream", { messages, model, ollamaUrl, channel }).catch(
-      (err) => reject(err),
-    );
-  });
-}
 
 interface Command {
   name: string;
@@ -53,7 +19,6 @@ const COMMANDS: Command[] = [
   { name: "corriger", description: "Corriger l'orthographe", action: "correct" },
   { name: "expliquer", description: "Expliquer simplement", action: "explain" },
   { name: "idees", description: "Générer des idées", action: "ideas" },
-  { name: "notes", description: "Interagir avec toutes les notes (MCP)", action: "mcp" },
 ];
 
 export { COMMANDS };
@@ -122,6 +87,7 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<ChatTurn[]>(loadHistory());
+  const abortRef = useRef<AbortController | null>(null);
 
   const ollamaUrl = useSettingsStore((s) => s.ollamaUrl);
   const ollamaModel = useSettingsStore((s) => s.ollamaModel);
@@ -199,38 +165,10 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
       setLocalProcessing(true);
 
       try {
-        if (command.action === "mcp") {
-          const noteContext = selectedNote
-            ? extractPlainText(selectedNote.content)
-            : null;
-
-          const userText = args || "Montre-moi mes notes.";
-
-          const result = await AIChatService.chat(
-            userText,
-            historyRef.current,
-            ollamaModel,
-            ollamaUrl,
-            noteContext,
-            {
-              storeCallbacks,
-              onToolCall: (toolName) => addMessage({ type: "tool_call", content: toolName }),
-            },
-          );
-
-          historyRef.current = [
-            ...historyRef.current,
-            { role: "user", content: userText },
-            { role: "assistant", content: result },
-          ];
-          saveHistory(historyRef.current);
-
-          addMessage({ type: "assistant", content: result, command: commandName });
-        } else {
-          // Non-MCP slash commands use streaming for real-time token delivery
+          // Slash commands build a prompt via onExecuteCommand then stream it (no tools needed)
           const prompt = await onExecuteCommand(command.action, args);
           const streamingMsg = addMessage({ type: "assistant", content: "", command: commandName });
-          const systemMessages = [
+          const streamMessages: ModelMessage[] = [
             {
               role: "system",
               content:
@@ -238,13 +176,9 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
             },
             { role: "user", content: prompt },
           ];
-          await streamOllamaResponse(
-            systemMessages,
-            ollamaModel,
-            ollamaUrl,
-            (token) => updateMessageContent(streamingMsg.id, token),
-          );
-        }
+          for await (const token of AIChatService.stream(streamMessages, ollamaModel, ollamaUrl)) {
+            updateMessageContent(streamingMsg.id, token);
+          }
       } catch (error) {
         addMessage({ type: "error", content: `Erreur: ${error}` });
       } finally {
@@ -260,12 +194,18 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
       setInput("");
       setLocalProcessing(true);
 
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       try {
         const noteContext = selectedNote
           ? extractPlainText(selectedNote.content)
           : null;
 
-        const result = await AIChatService.chat(
+        const streamingMsg = addMessage({ type: "assistant", content: "" });
+        let fullText = "";
+
+        for await (const token of AIChatService.chatStream(
           text,
           historyRef.current,
           ollamaModel,
@@ -274,24 +214,38 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
           {
             storeCallbacks,
             onToolCall: (toolName) => addMessage({ type: "tool_call", content: toolName }),
+            abortSignal: controller.signal,
           },
-        );
+        )) {
+          fullText += token;
+          updateMessageContent(streamingMsg.id, token);
+        }
+
+        const finalText = fullText.trim() || "Pas de réponse.";
+        if (!fullText.trim()) {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === streamingMsg.id ? { ...m, content: finalText } : m)),
+          );
+        }
 
         historyRef.current = [
           ...historyRef.current,
           { role: "user", content: text },
-          { role: "assistant", content: result },
+          { role: "assistant", content: finalText },
         ];
         saveHistory(historyRef.current);
-
-        addMessage({ type: "assistant", content: result });
       } catch (error) {
-        addMessage({ type: "error", content: `Erreur: ${error}` });
+        if (controller.signal.aborted) {
+          addMessage({ type: "error", content: "Génération annulée." });
+        } else {
+          addMessage({ type: "error", content: `Erreur: ${error}` });
+        }
       } finally {
+        abortRef.current = null;
         setLocalProcessing(false);
       }
     },
-    [addMessage, selectedNote, ollamaModel, ollamaUrl],
+    [addMessage, updateMessageContent, selectedNote, ollamaModel, ollamaUrl, storeCallbacks],
   );
 
   const handleSubmit = useCallback(
@@ -310,6 +264,10 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
     },
     [input, isCurrentlyProcessing, executeSlashCommand, sendFreeMessage],
   );
+
+  const abortChat = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
 
   const clearConversation = useCallback(() => {
     setMessages([]);
@@ -360,6 +318,7 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
     handleSubmit,
     handleKeyDown,
     clearConversation,
+    abortChat,
     selectCommand,
   };
 }

@@ -2,7 +2,8 @@ import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Trash2, ChevronRight, Send, FileText, Globe, PenLine,
-  Lightbulb, Brain, MessageCircle, Sparkles, Copy, Check,
+  Lightbulb, Brain, MessageCircle, Sparkles, Copy, Check, Square,
+  Plus, Eye, Search, Pencil, FilePlus, Minus,
 } from "lucide-react";
 import { IconButton } from "@/components/ui/IconButton";
 import { Button } from "@/components/ui/button";
@@ -98,6 +99,7 @@ export function AISidebar({
     handleSubmit,
     handleKeyDown,
     clearConversation,
+    abortChat,
     selectCommand,
   } = useAIChat({ onExecuteCommand, isProcessing, isOpen });
 
@@ -109,7 +111,7 @@ export function AISidebar({
         opacity: isOpen ? 1 : 0,
       }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="relative z-20 flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-surface-elevated pt-10"
+      className="relative z-20 flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-surface-elevated pt-8"
     >
       {/* Resize handle */}
       <div
@@ -146,14 +148,14 @@ export function AISidebar({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="flex h-full flex-col items-center justify-center gap-4 text-center"
+                className="flex h-full flex-col items-center justify-center gap-3 text-center"
               >
-                <Sparkles size={32} className="text-text-muted" />
+                <Sparkles size={24} className="text-text-muted/50" />
                 <div>
-                  <p className="text-sm text-text-secondary">
-                    Tapez <kbd className="rounded bg-surface-hover px-1.5 py-0.5 font-mono text-xs">/</kbd> pour les commandes
+                  <p className="text-[13px] text-text-secondary">
+                    Tapez <kbd className="rounded bg-surface-hover px-1.5 py-0.5 font-mono text-[11px]">/</kbd> pour les commandes
                   </p>
-                  <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                  <p className="mt-1.5 text-[11px] text-text-muted">
                     ou posez une question
                   </p>
                 </div>
@@ -164,28 +166,25 @@ export function AISidebar({
                 )}
               </motion.div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {messages.map((msg) => (
                   <motion.div
                     key={msg.id}
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.15 }}
                   >
                     {msg.type === "user" ? (
-                      <div className="rounded-lg bg-text-secondary/10 px-3 py-2">
-                        <code className="text-xs text-text-secondary">{msg.content}</code>
+                      <div className="flex justify-end">
+                        <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-text-secondary/10 px-3 py-1.5">
+                          <p className="text-[13px] text-text-secondary">{msg.content}</p>
+                        </div>
                       </div>
                     ) : msg.type === "tool_call" ? (
-                      <div className="flex items-center gap-2 rounded-md border border-border/50 bg-surface px-3 py-1.5">
-                        <Brain size={10} className="shrink-0 text-text-muted" />
-                        <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                          {msg.content}
-                        </span>
-                      </div>
+                      <ToolCallBadge toolName={msg.content} />
                     ) : msg.type === "error" ? (
-                      <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2">
-                        <p className="text-xs text-red-400">{msg.content}</p>
+                      <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2">
+                        <p className="text-[12px] text-red-400">{msg.content}</p>
                       </div>
                     ) : (
                       <AssistantMessage content={msg.content} command={msg.command} />
@@ -196,12 +195,21 @@ export function AISidebar({
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 py-1"
                   >
-                    <Sparkles size={12} className="animate-pulse text-text-secondary" />
-                    <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted animate-pulse">
-                      Réflexion...
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-text-muted/60" />
+                      <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-text-muted/60" style={{ animationDelay: "0.15s" }} />
+                      <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-text-muted/60" style={{ animationDelay: "0.3s" }} />
+                    </div>
+                    <button
+                      onClick={abortChat}
+                      className="ml-auto flex items-center gap-1 rounded-full border border-border px-2.5 py-0.5 text-[11px] text-text-muted transition-colors hover:border-red-400/50 hover:text-red-400 cursor-pointer"
+                      title="Arrêter la génération"
+                    >
+                      <Square size={8} />
+                      Stop
+                    </button>
                   </motion.div>
                 )}
                 <div ref={messagesEndRef} />
@@ -317,16 +325,38 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
   );
 }
 
+const TOOL_META: Record<string, { label: string; icon: React.ReactNode }> = {
+  list_notes: { label: "Lecture des notes", icon: <Eye size={10} /> },
+  read_note: { label: "Lecture d'une note", icon: <Eye size={10} /> },
+  create_note: { label: "Création d'une note", icon: <Plus size={10} /> },
+  update_note: { label: "Mise à jour d'une note", icon: <Pencil size={10} /> },
+  delete_note: { label: "Suppression d'une note", icon: <Minus size={10} /> },
+  append_to_note: { label: "Ajout de contenu", icon: <FilePlus size={10} /> },
+  search_notes: { label: "Recherche", icon: <Search size={10} /> },
+};
+
+function ToolCallBadge({ toolName }: { toolName: string }) {
+  const meta = TOOL_META[toolName];
+  return (
+    <div className="flex items-center gap-1.5 py-0.5">
+      <span className="text-text-ghost">{meta?.icon ?? <Brain size={10} />}</span>
+      <span className="text-[11px] text-text-ghost">
+        {meta?.label ?? toolName}
+      </span>
+    </div>
+  );
+}
+
 function AssistantMessage({ content, command }: { content: string; command?: string }) {
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <Sparkles size={10} className="text-text-secondary" />
-        <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-          {command}
-        </span>
-      </div>
-      <div className="ai-markdown text-[13px] leading-relaxed text-text-secondary [&_h1]:mb-2 [&_h1]:mt-4 [&_h1]:text-base [&_h1]:font-semibold [&_h1]:text-text [&_h2]:mb-1.5 [&_h2]:mt-3 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-text [&_h3]:mb-1.5 [&_h3]:mt-2 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:text-text [&_li]:mb-1 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_strong]:font-semibold [&_strong]:text-text [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5">
+    <div>
+      {command && (
+        <div className="mb-1 flex items-center gap-1.5">
+          <Sparkles size={9} className="text-text-ghost" />
+          <span className="text-[10px] text-text-ghost">{command}</span>
+        </div>
+      )}
+      <div className="ai-markdown text-[13px] leading-[1.6] text-text-secondary [&_h1]:mb-1.5 [&_h1]:mt-3 [&_h1]:text-[14px] [&_h1]:font-semibold [&_h1]:text-text [&_h2]:mb-1 [&_h2]:mt-2.5 [&_h2]:text-[13px] [&_h2]:font-semibold [&_h2]:text-text [&_h3]:mb-1 [&_h3]:mt-2 [&_h3]:text-[13px] [&_h3]:font-medium [&_h3]:text-text [&_li]:mb-0.5 [&_li]:text-[13px] [&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-4 [&_p]:my-1 [&_strong]:font-semibold [&_strong]:text-text [&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-4">
         <Markdown
           rehypePlugins={[rehypeSanitize]}
           components={{
@@ -340,7 +370,7 @@ function AssistantMessage({ content, command }: { content: string; command?: str
 
               return (
                 <code
-                  className="rounded bg-surface-hover px-1.5 py-0.5 font-mono text-xs text-text-secondary"
+                  className="rounded bg-surface-hover/80 px-1 py-0.5 font-mono text-[12px] text-text-secondary"
                   {...props}
                 >
                   {children}

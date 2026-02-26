@@ -1,8 +1,8 @@
-import { z } from "zod";
 import { safeInvoke } from "@/lib/tauri";
 import { NoteRepository } from "@/services/db";
 import { NoteArraySchema } from "@/types/schemas";
 import { extractPlainText } from "@/lib/utils/text";
+import { markdownToBlockNoteJson, parseBlockNoteContent } from "@/lib/utils/markdown-to-blocknote";
 import type { Note } from "@/types";
 import type { AIToolCall, AIToolResult } from "@/lib/ai-tools";
 
@@ -10,25 +10,6 @@ export interface StoreCallbacks {
   onNoteCreated: (note: Note) => void;
   onNoteUpdated: (note: Note) => void;
   onNoteDeleted: (id: string) => void;
-}
-
-/**
- * Converts a plain text string to a minimal BlockNote-compatible JSON document.
- * Each line becomes a paragraph block so the editor can render it correctly.
- */
-function textToBlockNoteJson(text: string): string {
-  const blocks = text
-    .split("\n")
-    .filter((line) => line.trim().length > 0)
-    .map((line) => ({
-      id: crypto.randomUUID(),
-      type: "paragraph",
-      props: { textColor: "default", backgroundColor: "default", textAlignment: "left" },
-      content: [{ type: "text", text: line, styles: {} }],
-      children: [],
-    }));
-
-  return JSON.stringify(blocks);
 }
 
 /**
@@ -79,7 +60,7 @@ async function executeToolCall(
     case "create_note": {
       const { title, content } = call.arguments as { title: string; content?: string };
       if (!title) throw new Error("title est requis");
-      const blockNoteContent = content ? textToBlockNoteJson(content) : null;
+      const blockNoteContent = content ? markdownToBlockNoteJson(content) : null;
       const note = await NoteRepository.create(title, blockNoteContent);
       callbacks?.onNoteCreated(note);
       return `Note créée avec succès. ID: ${note.id}, Titre: "${note.title}"`;
@@ -95,7 +76,7 @@ async function executeToolCall(
       if (!title && !content) throw new Error("Au moins title ou content est requis");
       const updates: { title?: string; content?: string } = {};
       if (title) updates.title = title;
-      if (content) updates.content = textToBlockNoteJson(content);
+      if (content) updates.content = markdownToBlockNoteJson(content);
       const updated = await NoteRepository.update(note_id, updates);
       callbacks?.onNoteUpdated(updated);
       return `Note "${updated.title}" mise à jour avec succès.`;
@@ -107,6 +88,20 @@ async function executeToolCall(
       await NoteRepository.delete(note_id);
       callbacks?.onNoteDeleted(note_id);
       return `Note supprimée avec succès.`;
+    }
+
+    case "append_to_note": {
+      const { note_id, content } = call.arguments as { note_id: string; content: string };
+      if (!note_id) throw new Error("note_id est requis");
+      if (!content) throw new Error("content est requis");
+      const existingNote = await NoteRepository.getById(note_id);
+      if (!existingNote) return `Aucune note trouvée avec l'ID "${note_id}".`;
+      const existingBlocks = parseBlockNoteContent(existingNote.content);
+      const newBlocks = JSON.parse(markdownToBlockNoteJson(content));
+      const merged = JSON.stringify([...existingBlocks, ...newBlocks]);
+      const appended = await NoteRepository.update(note_id, { content: merged });
+      callbacks?.onNoteUpdated(appended);
+      return `Contenu ajouté à la note "${appended.title}" avec succès.`;
     }
 
     case "search_notes": {
@@ -128,29 +123,3 @@ async function executeToolCall(
   }
 }
 
-/**
- * Parses tool calls from an Ollama response that includes function call data.
- * Ollama returns tool_calls as a JSON array in the message.
- */
-export function parseToolCalls(rawResponse: string): AIToolCall[] | null {
-  try {
-    const parsed = z.array(
-      z.object({
-        function: z.object({
-          name: z.string(),
-          arguments: z.unknown(),
-        }),
-      }),
-    ).parse(JSON.parse(rawResponse));
-
-    return parsed.map((tc) => ({
-      name: tc.function.name,
-      arguments:
-        typeof tc.function.arguments === "string"
-          ? JSON.parse(tc.function.arguments)
-          : tc.function.arguments,
-    }));
-  } catch {
-    return null;
-  }
-}

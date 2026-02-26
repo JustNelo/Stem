@@ -3,12 +3,21 @@ import "@blocknote/mantine/style.css";
 import "./editor.css";
 
 import { useCallback, useMemo } from "react";
+import { BlockNoteSchema, createCodeBlockSpec } from "@blocknote/core";
 import { filterSuggestionItems } from "@blocknote/core/extensions";
 import { useCreateBlockNote, SuggestionMenuController, getDefaultReactSlashMenuItems } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
+import { codeBlockOptions } from "@blocknote/code-block";
 import { useSettingsStore } from "@/store/useSettingsStore";
-import { AIService } from "@/services/ai";
+import { AIChatService } from "@/services/ai-chat";
+import type { ModelMessage } from "ai";
 import { AI_SLASH_COMMANDS, createAISlashMenuItem } from "@/lib/slash-commands";
+
+const schema = BlockNoteSchema.create().extend({
+  blockSpecs: {
+    codeBlock: createCodeBlockSpec(codeBlockOptions),
+  },
+});
 
 interface EditorProps {
   initialContent?: string;
@@ -34,16 +43,24 @@ export function Editor({ initialContent, onChange }: EditorProps) {
   const ollamaUrl = useSettingsStore((s) => s.ollamaUrl);
 
   const editor = useCreateBlockNote({
+    schema,
     initialContent: safeParse(initialContent),
   });
 
   const editorTheme = DARK_THEMES.has(theme) ? "dark" : "light";
 
-  // AI execution handler for slash commands — sends raw prompt to Ollama
+  // AI execution handler for slash commands — streams via AI SDK
   const handleAIExecute = useCallback(
     async (prompt: string): Promise<string> => {
-      const result = await AIService.executeRawPrompt(prompt, ollamaModel, ollamaUrl);
-      return result;
+      const messages: ModelMessage[] = [
+        { role: "system", content: "Tu es un assistant intelligent. Réponds TOUJOURS en français sauf si demande explicite. Utilise un style clair et structuré." },
+        { role: "user", content: prompt },
+      ];
+      let result = "";
+      for await (const token of AIChatService.stream(messages, ollamaModel, ollamaUrl)) {
+        result += token;
+      }
+      return result || "Résultat vide.";
     },
     [ollamaModel, ollamaUrl],
   );
