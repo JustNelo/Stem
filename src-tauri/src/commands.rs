@@ -15,6 +15,28 @@ pub struct Note {
     pub created_at: i64,
     pub updated_at: i64,
     pub is_pinned: bool,
+    pub folder_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Folder {
+    pub id: String,
+    pub name: String,
+    pub parent_id: Option<String>,
+    pub position: i32,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateFolderPayload {
+    pub name: String,
+    pub parent_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RenameFolderPayload {
+    pub id: String,
+    pub name: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -45,6 +67,17 @@ fn row_to_note(row: &Row) -> Result<Note, rusqlite::Error> {
         created_at: row.get(3)?,
         updated_at: row.get(4)?,
         is_pinned: row.get::<_, i32>(5).unwrap_or(0) != 0,
+        folder_id: row.get(6)?,
+    })
+}
+
+fn row_to_folder(row: &Row) -> Result<Folder, rusqlite::Error> {
+    Ok(Folder {
+        id: row.get(0)?,
+        name: row.get(1)?,
+        parent_id: row.get(2)?,
+        position: row.get(3)?,
+        created_at: row.get(4)?,
     })
 }
 
@@ -68,7 +101,7 @@ where
 fn get_note_sync(db: &Database, id: &str) -> Result<Option<Note>, String> {
     let conn = db.connection();
     let mut stmt = map_err(
-        conn.prepare("SELECT id, title, content, created_at, updated_at, is_pinned FROM notes WHERE id = ?1")
+        conn.prepare("SELECT id, title, content, created_at, updated_at, is_pinned, folder_id FROM notes WHERE id = ?1")
     )?;
     map_err(stmt.query_row([id], row_to_note).optional())
 }
@@ -90,7 +123,7 @@ pub async fn create_note(db: State<'_, Database>, payload: CreateNotePayload) ->
             "INSERT INTO notes (id, title, content, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)",
             (&id, &title, &content, &now, &now),
         ))?;
-        Ok(Note { id, title, content, created_at: now, updated_at: now, is_pinned: false })
+        Ok(Note { id, title, content, created_at: now, updated_at: now, is_pinned: false, folder_id: None })
     }).await
 }
 
@@ -104,7 +137,7 @@ pub async fn get_all_notes(db: State<'_, Database>) -> Result<Vec<Note>, String>
     spawn(&db, move |db| {
         let conn = db.connection();
         let mut stmt = map_err(
-            conn.prepare("SELECT id, title, content, created_at, updated_at, is_pinned FROM notes ORDER BY is_pinned DESC, updated_at DESC")
+            conn.prepare("SELECT id, title, content, created_at, updated_at, is_pinned, folder_id FROM notes ORDER BY is_pinned DESC, updated_at DESC")
         )?;
         let notes = map_err(stmt.query_map([], row_to_note))?
             .collect::<Result<Vec<_>, _>>();
@@ -170,7 +203,7 @@ pub async fn export_all_data(db: State<'_, Database>) -> Result<String, String> 
         let conn = db.connection();
 
         let mut stmt = map_err(
-            conn.prepare("SELECT id, title, content, created_at, updated_at, is_pinned FROM notes ORDER BY updated_at DESC")
+            conn.prepare("SELECT id, title, content, created_at, updated_at, is_pinned, folder_id FROM notes ORDER BY updated_at DESC")
         )?;
         let notes = map_err(stmt.query_map([], row_to_note))?
             .collect::<Result<Vec<_>, _>>();
@@ -215,6 +248,116 @@ pub async fn import_all_data(db: State<'_, Database>, data: String) -> Result<St
     }).await
 }
 
+// ===== FOLDERS =====
+
+#[tauri::command]
+pub async fn get_all_folders(db: State<'_, Database>) -> Result<Vec<Folder>, String> {
+    spawn(&db, move |db| {
+        let conn = db.connection();
+        let mut stmt = map_err(
+            conn.prepare("SELECT id, name, parent_id, position, created_at FROM folders ORDER BY position ASC, created_at ASC")
+        )?;
+        let folders = map_err(stmt.query_map([], row_to_folder))?
+            .collect::<Result<Vec<_>, _>>();
+        map_err(folders)
+    }).await
+}
+
+#[tauri::command]
+pub async fn create_folder(db: State<'_, Database>, payload: CreateFolderPayload) -> Result<Folder, String> {
+    spawn(&db, move |db| {
+        let id = Uuid::new_v4().to_string();
+        let now = current_timestamp();
+        let conn = db.connection();
+
+        let position: i32 = conn
+            .query_row(
+                "SELECT COALESCE(MAX(position), -1) + 1 FROM folders WHERE parent_id IS ?1",
+                [&payload.parent_id],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+
+        map_err(conn.execute(
+            "INSERT INTO folders (id, name, parent_id, position, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+            (&id, &payload.name, &payload.parent_id, &position, &now),
+        ))?;
+
+        Ok(Folder { id, name: payload.name, parent_id: payload.parent_id, position, created_at: now })
+    }).await
+}
+
+#[tauri::command]
+pub async fn rename_folder(db: State<'_, Database>, payload: RenameFolderPayload) -> Result<Folder, String> {
+    spawn(&db, move |db| {
+        let conn = db.connection();
+        map_err(conn.execute(
+            "UPDATE folders SET name = ?1 WHERE id = ?2",
+            (&payload.name, &payload.id),
+        ))?;
+        drop(conn);
+
+        let conn = db.connection();
+        let mut stmt = map_err(
+            conn.prepare("SELECT id, name, parent_id, position, created_at FROM folders WHERE id = ?1")
+        )?;
+        map_err(stmt.query_row([&payload.id], row_to_folder))
+            .map_err(|_| "Folder not found".to_string())
+    }).await
+}
+
+#[tauri::command]
+pub async fn delete_folder(db: State<'_, Database>, id: String) -> Result<(), String> {
+    spawn(&db, move |db| {
+        let conn = db.connection();
+        // Move notes in this folder back to root
+        map_err(conn.execute(
+            "UPDATE notes SET folder_id = NULL WHERE folder_id = ?1",
+            [&id],
+        ))?;
+        // Move child folders to root
+        map_err(conn.execute(
+            "UPDATE folders SET parent_id = NULL WHERE parent_id = ?1",
+            [&id],
+        ))?;
+        // Delete the folder
+        map_err(conn.execute("DELETE FROM folders WHERE id = ?1", [&id]))?;
+        Ok(())
+    }).await
+}
+
+#[tauri::command]
+pub async fn move_note_to_folder(db: State<'_, Database>, note_id: String, folder_id: Option<String>) -> Result<Note, String> {
+    spawn(&db, move |db| {
+        let conn = db.connection();
+        map_err(conn.execute(
+            "UPDATE notes SET folder_id = ?1, updated_at = ?2 WHERE id = ?3",
+            (&folder_id, &current_timestamp(), &note_id),
+        ))?;
+        drop(conn);
+        get_note_sync(&db, &note_id)?.ok_or_else(|| "Note not found".to_string())
+    }).await
+}
+
+#[tauri::command]
+pub async fn move_folder(db: State<'_, Database>, id: String, parent_id: Option<String>) -> Result<Folder, String> {
+    spawn(&db, move |db| {
+        let conn = db.connection();
+        map_err(conn.execute(
+            "UPDATE folders SET parent_id = ?1 WHERE id = ?2",
+            (&parent_id, &id),
+        ))?;
+        drop(conn);
+
+        let conn = db.connection();
+        let mut stmt = map_err(
+            conn.prepare("SELECT id, name, parent_id, position, created_at FROM folders WHERE id = ?1")
+        )?;
+        map_err(stmt.query_row([&id], row_to_folder))
+            .map_err(|_| "Folder not found".to_string())
+    }).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -248,7 +391,7 @@ mod tests {
 
         let conn = db.connection();
         let mut stmt = conn.prepare(
-            "SELECT id, title, content, created_at, updated_at, is_pinned FROM notes WHERE id = ?1"
+            "SELECT id, title, content, created_at, updated_at, is_pinned, folder_id FROM notes WHERE id = ?1"
         ).unwrap();
         let note = stmt.query_row(["n1"], row_to_note).unwrap();
 
@@ -256,6 +399,7 @@ mod tests {
         assert_eq!(note.title, "Test Note");
         assert!(note.content.is_none());
         assert!(!note.is_pinned);
+        assert!(note.folder_id.is_none());
     }
 
     #[test]
@@ -282,7 +426,7 @@ mod tests {
         ).unwrap();
 
         let mut stmt = conn.prepare(
-            "SELECT id, title, content, created_at, updated_at, is_pinned FROM notes WHERE id = ?1"
+            "SELECT id, title, content, created_at, updated_at, is_pinned, folder_id FROM notes WHERE id = ?1"
         ).unwrap();
         let note = stmt.query_row(["n1"], row_to_note).unwrap();
 
@@ -327,7 +471,7 @@ mod tests {
         conn.execute("UPDATE notes SET is_pinned = 1 WHERE id = 'n2'", []).unwrap();
 
         let mut stmt = conn.prepare(
-            "SELECT id, title, content, created_at, updated_at, is_pinned FROM notes ORDER BY is_pinned DESC, updated_at DESC"
+            "SELECT id, title, content, created_at, updated_at, is_pinned, folder_id FROM notes ORDER BY is_pinned DESC, updated_at DESC"
         ).unwrap();
         let notes: Vec<Note> = stmt.query_map([], row_to_note).unwrap()
             .collect::<Result<Vec<_>, _>>().unwrap();

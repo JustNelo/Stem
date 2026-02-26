@@ -7,11 +7,12 @@ mod ollama;
 use commands::{
     create_note, delete_note, get_all_notes, get_note, init_database, update_note, toggle_pin_note,
     export_all_data, import_all_data,
+    get_all_folders, create_folder, rename_folder, delete_folder, move_note_to_folder, move_folder,
 };
 use db::Database;
 use embeddings::{generate_embedding, search_similar_notes, delete_embedding};
 use git::{git_status, git_init, git_pull, git_sync};
-use ollama::{summarize_note, check_ollama_connection, get_ollama_models, ollama_chat, ollama_chat_stream};
+use ollama::{summarize_note, check_ollama_connection, get_ollama_models};
 use tauri::{Manager, Emitter};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
@@ -88,8 +89,6 @@ pub fn run() {
             summarize_note,
             check_ollama_connection,
             get_ollama_models,
-            ollama_chat,
-            ollama_chat_stream,
             export_all_data,
             import_all_data,
             generate_embedding,
@@ -98,7 +97,13 @@ pub fn run() {
             git_status,
             git_init,
             git_pull,
-            git_sync
+            git_sync,
+            get_all_folders,
+            create_folder,
+            rename_folder,
+            delete_folder,
+            move_note_to_folder,
+            move_folder
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -40,9 +40,26 @@ impl Database {
             "ALTER TABLE notes ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0",
             [],
         );
+        // Migration: add folder_id column if missing
+        let _ = conn.execute(
+            "ALTER TABLE notes ADD COLUMN folder_id TEXT DEFAULT NULL",
+            [],
+        );
         // Migration: drop legacy tag tables (ignore errors if they don't exist)
         let _ = conn.execute("DROP TABLE IF EXISTS note_tags", []);
         let _ = conn.execute("DROP TABLE IF EXISTS tags", []);
+
+        // Folders table
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS folders (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                parent_id TEXT DEFAULT NULL,
+                position INTEGER NOT NULL DEFAULT 0,
+                created_at INTEGER NOT NULL
+            )",
+            [],
+        )?;
 
         // Embeddings table for semantic search (RAG)
         conn.execute(

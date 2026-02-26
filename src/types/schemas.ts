@@ -9,9 +9,22 @@ export const NoteSchema = z.object({
   created_at: z.number(),
   updated_at: z.number(),
   is_pinned: z.boolean(),
+  folder_id: z.string().nullable(),
 });
 
 export const NoteArraySchema = z.array(NoteSchema);
+
+// ===== Folder schemas =====
+
+export const FolderSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  parent_id: z.string().nullable(),
+  position: z.number(),
+  created_at: z.number(),
+});
+
+export const FolderArraySchema = z.array(FolderSchema);
 
 // ===== Ollama schemas =====
 

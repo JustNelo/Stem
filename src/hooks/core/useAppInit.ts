@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useNotesStore } from "@/store/useNotesStore";
+import { useFoldersStore } from "@/store/useFoldersStore";
 
 /**
  * Handles one-time app initialization:
- * - Fetches notes on mount
+ * - Fetches notes and folders on mount
  * - Detects quick-capture window
  * - Listens for "refresh-notes" Tauri event
  * - Provides quick-capture save handler
@@ -13,13 +14,15 @@ export function useAppInit() {
   const fetchNotes = useNotesStore((s) => s.fetchNotes);
   const createNote = useNotesStore((s) => s.createNote);
   const updateNote = useNotesStore((s) => s.updateNote);
+  const fetchFolders = useFoldersStore((s) => s.fetchFolders);
 
   const [isQuickCapture, setIsQuickCapture] = useState(false);
 
-  // Fetch notes on mount
+  // Fetch notes and folders on mount
   useEffect(() => {
     fetchNotes();
-  }, [fetchNotes]);
+    fetchFolders();
+  }, [fetchNotes, fetchFolders]);
 
   // Detect quick-capture window
   useEffect(() => {

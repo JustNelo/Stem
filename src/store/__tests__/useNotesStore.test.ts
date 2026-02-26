@@ -23,6 +23,7 @@ const MOCK_NOTE = {
   created_at: 1700000000,
   updated_at: 1700000000,
   is_pinned: false,
+  folder_id: null,
 };
 
 describe("useNotesStore", () => {
