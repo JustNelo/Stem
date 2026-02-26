@@ -148,7 +148,7 @@ Contributions are welcome! Please open an issue first to discuss what you'd like
 
 ## License
 
-[MIT](LICENSE)
+Copyright (c) 2026 Léon Gallet. This is a "Source Available" project. You are welcome to explore the code and run it for personal use. However, redistribution, sub-licensing, or any commercial exploitation of the code or the application is strictly forbidden.
 
 ---
 
