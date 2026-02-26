@@ -1,28 +1,101 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { Plus, ChevronLeft, ArrowDownAZ, CalendarArrowDown, Search, FolderPlus } from "lucide-react";
 import { useNotesStore } from "@/store/useNotesStore";
 import { useFoldersStore } from "@/store/useFoldersStore";
 import { useNotesFilter } from "@/hooks/core/useNotesFilter";
 import { FolderRepository } from "@/services/db";
 import { NoteListItem } from "@/components/features/NoteListItem";
-import { FolderItem } from "@/components/features/FolderItem";
+import { FolderItem, type FolderTreeNode } from "@/components/features/FolderItem";
 import { IconButton } from "@/components/ui/IconButton";
-import { useDroppable } from "@dnd-kit/core";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import type { Folder } from "@/types";
 
 const SIDEBAR_WIDTH = 260;
 
-function RootDropZone({ children }: { children: React.ReactNode }) {
-  const { setNodeRef, isOver } = useDroppable({ id: "folder-root" });
+/** Native HTML5 drop zone for "root" (no folder) */
+function RootDropZone({
+  children,
+  onDropItem,
+}: {
+  children: React.ReactNode;
+  onDropItem: (type: string, itemId: string, targetFolderId: string | null) => void;
+}) {
+  const [isOver, setIsOver] = useState(false);
+  const countRef = useRef(0);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    countRef.current++;
+    setIsOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback(() => {
+    countRef.current--;
+    if (countRef.current <= 0) {
+      countRef.current = 0;
+      setIsOver(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      countRef.current = 0;
+      setIsOver(false);
+      const type = e.dataTransfer.getData("application/stem-type");
+      const itemId = e.dataTransfer.getData("application/stem-id");
+      if (type && itemId) {
+        onDropItem(type, itemId, null);
+      }
+    },
+    [onDropItem],
+  );
+
   return (
     <div
-      ref={setNodeRef}
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
       className={`min-h-[2rem] rounded-md transition-colors ${isOver ? "bg-accent/5" : ""}`}
     >
       {children}
     </div>
   );
+}
+
+/** Build a tree from flat folder list respecting parent_id */
+function buildFolderTree(folders: Folder[]): FolderTreeNode[] {
+  const map = new Map<string, FolderTreeNode>();
+  for (const f of folders) {
+    map.set(f.id, { ...f, children: [] });
+  }
+  const roots: FolderTreeNode[] = [];
+  for (const node of map.values()) {
+    if (node.parent_id && map.has(node.parent_id)) {
+      map.get(node.parent_id)!.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+  return roots;
+}
+
+/** Check if `candidateId` is a descendant of `ancestorId` */
+function isDescendant(folders: Folder[], candidateId: string, ancestorId: string): boolean {
+  const byId = new Map(folders.map((f) => [f.id, f]));
+  let current = byId.get(candidateId);
+  while (current) {
+    if (current.parent_id === ancestorId) return true;
+    current = current.parent_id ? byId.get(current.parent_id) : undefined;
+  }
+  return false;
 }
 
 interface NotesSidebarProps {
@@ -48,15 +121,18 @@ export function NotesSidebar({
   const createFolder = useFoldersStore((s) => s.createFolder);
   const renameFolder = useFoldersStore((s) => s.renameFolder);
   const deleteFolder = useFoldersStore((s) => s.deleteFolder);
+  const moveFolder = useFoldersStore((s) => s.moveFolder);
 
   const {
     filtered,
-    pinned,
     sortBy,
     toggleSort,
     searchQuery,
     setSearchQuery,
   } = useNotesFilter();
+
+  // Build folder tree from flat list
+  const folderTree = useMemo(() => buildFolderTree(folders), [folders]);
 
   // Separate notes by folder membership
   const { folderNotesMap, looseNotes } = useMemo(() => {
@@ -78,44 +154,42 @@ export function NotesSidebar({
   const loosePinned = useMemo(() => looseNotes.filter((n) => n.is_pinned), [looseNotes]);
   const looseUnpinned = useMemo(() => looseNotes.filter((n) => !n.is_pinned), [looseNotes]);
 
-  // DnD: require 5px movement before starting drag (avoids accidental drags on click)
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-  );
-
-  const handleDragEnd = useCallback(
-    async (event: DragEndEvent) => {
-      const { active, over } = event;
-      if (!over) return;
-
-      const noteData = active.data.current;
-      if (noteData?.type !== "note") return;
-
-      const noteId = noteData.noteId as string;
-      const overId = over.id as string;
-
-      let targetFolderId: string | null = null;
-      if (overId === "folder-root") {
-        targetFolderId = null;
-      } else if (overId.startsWith("folder-")) {
-        targetFolderId = overId.replace("folder-", "");
-      } else {
-        return;
-      }
-
+  // Unified drop handler for both folders and root zone
+  const handleDropItem = useCallback(
+    async (type: string, itemId: string, targetFolderId: string | null) => {
       try {
-        await FolderRepository.moveNoteToFolder(noteId, targetFolderId);
-        await fetchNotes();
+        if (type === "note") {
+          await FolderRepository.moveNoteToFolder(itemId, targetFolderId);
+          await fetchNotes();
+        } else if (type === "folder") {
+          if (itemId === targetFolderId) return;
+          if (targetFolderId && isDescendant(folders, targetFolderId, itemId)) return;
+          await moveFolder(itemId, targetFolderId);
+        }
       } catch (error) {
-        console.error("Failed to move note:", error);
+        console.error("Failed to move item:", error);
       }
     },
-    [fetchNotes],
+    [fetchNotes, folders, moveFolder],
   );
+
+  const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
+
+  const handleConfirmDeleteFolder = useCallback(() => {
+    if (folderToDelete) deleteFolder(folderToDelete);
+    setFolderToDelete(null);
+  }, [folderToDelete, deleteFolder]);
 
   const handleCreateFolder = useCallback(() => {
     createFolder("Nouveau dossier");
   }, [createFolder]);
+
+  const handleCreateSubFolder = useCallback(
+    (parentId: string) => {
+      createFolder("Nouveau dossier", parentId);
+    },
+    [createFolder],
+  );
 
   return (
     <motion.aside
@@ -170,82 +244,110 @@ export function NotesSidebar({
           </div>
         </div>
 
-        {/* Notes + Folders list */}
-        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-          <div className="flex-1 overflow-y-auto px-2 py-2">
-            {filtered.length === 0 && folders.length === 0 ? (
-              <div className="px-2 py-8 text-center text-sm text-text-muted">
-                Aucune note
-              </div>
-            ) : (
-              <div className="space-y-0.5">
-                {/* Pinned notes (always at top, outside folders) */}
-                {loosePinned.length > 0 && (
-                  <>
-                    <div className="px-2 pb-1 pt-2 text-[10px] uppercase tracking-widest text-text-muted">
-                      Épinglées
+        {/* Notes + Folders list — entire area is a valid drop zone */}
+        <div
+          className="flex-1 overflow-y-auto px-2 py-2"
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            const type = e.dataTransfer.getData("application/stem-type");
+            const itemId = e.dataTransfer.getData("application/stem-id");
+            if (type && itemId) {
+              handleDropItem(type, itemId, null);
+            }
+          }}
+        >
+          {filtered.length === 0 && folders.length === 0 ? (
+            <div className="px-2 py-8 text-center text-sm text-text-muted">
+              Aucune note
+            </div>
+          ) : (
+            <div className="space-y-0.5">
+              {/* Pinned notes (always at top, outside folders) */}
+              {loosePinned.length > 0 && (
+                <>
+                  <div className="px-2 pb-1 pt-2 text-[10px] uppercase tracking-widest text-text-muted">
+                    Épinglées
+                  </div>
+                  {loosePinned.map((note) => (
+                    <NoteListItem
+                      key={note.id}
+                      note={note}
+                      isSelected={selectedNote?.id === note.id}
+                      onSelect={selectNote}
+                      onTogglePin={togglePin}
+                      onRequestDelete={onRequestDelete}
+                    />
+                  ))}
+                </>
+              )}
+
+              {/* Folders (tree) */}
+              {folderTree.length > 0 && (
+                <>
+                  {loosePinned.length > 0 && (
+                    <div className="pt-1" />
+                  )}
+                  {folderTree.map((folder) => (
+                    <FolderItem
+                      key={folder.id}
+                      folder={folder}
+                      notes={folderNotesMap.get(folder.id) ?? []}
+                      folderNotesMap={folderNotesMap}
+                      expandedFolders={expandedFolders}
+                      selectedNoteId={selectedNote?.id}
+                      onToggleExpand={toggleExpanded}
+                      onSelectNote={selectNote}
+                      onTogglePin={togglePin}
+                      onRequestDeleteNote={onRequestDelete}
+                      onRenameFolder={renameFolder}
+                      onDeleteFolder={setFolderToDelete}
+                      onCreateSubFolder={handleCreateSubFolder}
+                      onDropItem={handleDropItem}
+                    />
+                  ))}
+                </>
+              )}
+
+              {/* Loose unpinned notes */}
+              {looseUnpinned.length > 0 && (
+                <RootDropZone onDropItem={handleDropItem}>
+                  {(folderTree.length > 0 || loosePinned.length > 0) && (
+                    <div className="px-2 pb-1 pt-3 text-[10px] uppercase tracking-widest text-text-muted">
+                      {folderTree.length > 0 ? "Non classées" : "Récentes"}
                     </div>
-                    {loosePinned.map((note) => (
-                      <NoteListItem
-                        key={note.id}
-                        note={note}
-                        isSelected={selectedNote?.id === note.id}
-                        onSelect={selectNote}
-                        onTogglePin={togglePin}
-                        onRequestDelete={onRequestDelete}
-                      />
-                    ))}
-                  </>
-                )}
+                  )}
+                  {looseUnpinned.map((note) => (
+                    <NoteListItem
+                      key={note.id}
+                      note={note}
+                      isSelected={selectedNote?.id === note.id}
+                      onSelect={selectNote}
+                      onTogglePin={togglePin}
+                      onRequestDelete={onRequestDelete}
+                    />
+                  ))}
+                </RootDropZone>
+              )}
+            </div>
+          )}
+        </div>
 
-                {/* Folders */}
-                {folders.length > 0 && (
-                  <>
-                    {(loosePinned.length > 0 || pinned.length > 0) && (
-                      <div className="pt-1" />
-                    )}
-                    {folders.map((folder) => (
-                      <FolderItem
-                        key={folder.id}
-                        folder={folder}
-                        notes={folderNotesMap.get(folder.id) ?? []}
-                        isExpanded={expandedFolders.has(folder.id)}
-                        selectedNoteId={selectedNote?.id}
-                        onToggleExpand={toggleExpanded}
-                        onSelectNote={selectNote}
-                        onTogglePin={togglePin}
-                        onRequestDeleteNote={onRequestDelete}
-                        onRenameFolder={renameFolder}
-                        onDeleteFolder={deleteFolder}
-                      />
-                    ))}
-                  </>
-                )}
-
-                {/* Loose unpinned notes */}
-                {looseUnpinned.length > 0 && (
-                  <RootDropZone>
-                    {(folders.length > 0 || loosePinned.length > 0) && (
-                      <div className="px-2 pb-1 pt-3 text-[10px] uppercase tracking-widest text-text-muted">
-                        {folders.length > 0 ? "Non classées" : "Récentes"}
-                      </div>
-                    )}
-                    {looseUnpinned.map((note) => (
-                      <NoteListItem
-                        key={note.id}
-                        note={note}
-                        isSelected={selectedNote?.id === note.id}
-                        onSelect={selectNote}
-                        onTogglePin={togglePin}
-                        onRequestDelete={onRequestDelete}
-                      />
-                    ))}
-                  </RootDropZone>
-                )}
-              </div>
-            )}
-          </div>
-        </DndContext>
+        {/* Folder delete confirmation modal */}
+        {folderToDelete && (
+          <ConfirmModal
+            title="Supprimer ce dossier ?"
+            description="Les notes et sous-dossiers seront déplacés à la racine."
+            confirmLabel="Supprimer"
+            cancelLabel="Annuler"
+            variant="danger"
+            onConfirm={handleConfirmDeleteFolder}
+            onCancel={() => setFolderToDelete(null)}
+          />
+        )}
       </div>
     </motion.aside>
   );

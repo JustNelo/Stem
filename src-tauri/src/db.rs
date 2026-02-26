@@ -90,4 +90,15 @@ impl Database {
     pub fn connection_mut(&self) -> MutexGuard<'_, Connection> {
         self.lock().expect("Database mutex poisoned")
     }
+
+    /// Runs a blocking closure on a separate thread to avoid blocking the IPC thread.
+    pub async fn spawn<F, T>(self, f: F) -> Result<T, String>
+    where
+        F: FnOnce(Database) -> Result<T, String> + Send + 'static,
+        T: Send + 'static,
+    {
+        tauri::async_runtime::spawn_blocking(move || f(self))
+            .await
+            .map_err(|e| format!("Task failed: {}", e))?
+    }
 }

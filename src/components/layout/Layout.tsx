@@ -53,8 +53,6 @@ export function Layout({
     <div className="relative flex h-full w-full overflow-hidden bg-surface">
       {/* Subtle texture overlay */}
       <div className="texture-overlay pointer-events-none fixed inset-0 z-50" />
-      {/* Theme visual effect */}
-      <div className="theme-effect pointer-events-none fixed inset-0 z-0" />
 
       {/* LEFT COLUMN — Notes sidebar */}
       <NotesSidebar

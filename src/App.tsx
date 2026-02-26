@@ -13,6 +13,7 @@ import { useEditorState } from "@/hooks/core/useEditorState";
 import { useAICommand } from "@/hooks/core/useAICommand";
 import { useAppShortcuts } from "@/hooks/core/useAppShortcuts";
 import { useEmbeddingSync } from "@/hooks/useEmbeddingSync";
+import { useAutoUpdate } from "@/hooks/useAutoUpdate";
 import { ReviewMode } from "@/components/features/ReviewMode";
 
 const Editor = lazy(() => import("@/components/Editor"));
@@ -42,6 +43,7 @@ function App() {
 
   useAppShortcuts();
   useEmbeddingSync();
+  const { available: updateAvailable, version: updateVersion, installing: updateInstalling, install: installUpdate } = useAutoUpdate();
 
   const [reviewOpen, setReviewOpen] = useState(false);
   const openReview = useCallback(() => setReviewOpen(true), []);
@@ -69,6 +71,20 @@ function App() {
     <div className="flex h-screen w-screen flex-col overflow-hidden">
       <TitleBar onOpenSettings={() => setShowSettings(true)} />
       <ToastContainer />
+
+      {/* Update banner */}
+      {updateAvailable && (
+        <div className="flex items-center justify-center gap-3 bg-accent/10 px-4 py-1.5 text-xs text-text">
+          <span>Mise à jour {updateVersion} disponible</span>
+          <button
+            onClick={installUpdate}
+            disabled={updateInstalling}
+            className="rounded-md bg-accent px-3 py-0.5 text-[11px] font-medium text-white transition-colors hover:bg-accent/80 disabled:opacity-50"
+          >
+            {updateInstalling ? "Installation..." : "Installer"}
+          </button>
+        </div>
+      )}
 
       {/* Settings overlay — rendered on top without unmounting the app tree */}
       <AnimatePresence>

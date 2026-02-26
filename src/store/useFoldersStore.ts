@@ -16,7 +16,9 @@ interface FoldersState {
   createFolder: (name: string, parentId?: string | null) => Promise<Folder | null>;
   renameFolder: (id: string, name: string) => Promise<void>;
   deleteFolder: (id: string) => Promise<void>;
+  moveFolder: (id: string, parentId: string | null) => Promise<void>;
   toggleExpanded: (id: string) => void;
+  expandFolder: (id: string) => void;
 }
 
 export const useFoldersStore = create<FoldersState>((set) => ({
@@ -75,6 +77,21 @@ export const useFoldersStore = create<FoldersState>((set) => ({
     }
   },
 
+  moveFolder: async (id, parentId) => {
+    try {
+      const updated = await FolderRepository.moveFolder(id, parentId);
+      set((state) => ({
+        folders: state.folders.map((f) => (f.id === id ? updated : f)),
+        expandedFolders: parentId
+          ? new Set([...state.expandedFolders, parentId])
+          : state.expandedFolders,
+      }));
+    } catch (error) {
+      console.error("Failed to move folder:", error);
+      toast("Impossible de déplacer le dossier", "error");
+    }
+  },
+
   toggleExpanded: (id) => {
     set((state) => {
       const next = new Set(state.expandedFolders);
@@ -84,6 +101,13 @@ export const useFoldersStore = create<FoldersState>((set) => ({
         next.add(id);
       }
       return { expandedFolders: next };
+    });
+  },
+
+  expandFolder: (id) => {
+    set((state) => {
+      if (state.expandedFolders.has(id)) return state;
+      return { expandedFolders: new Set([...state.expandedFolders, id]) };
     });
   },
 }));

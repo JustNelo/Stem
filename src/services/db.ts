@@ -63,15 +63,15 @@ export const FolderRepository = {
 
   async moveNoteToFolder(noteId: string, folderId: string | null): Promise<Note> {
     return safeInvoke("move_note_to_folder", NoteSchema, {
-      note_id: noteId,
-      folder_id: folderId,
+      noteId,
+      folderId,
     });
   },
 
   async moveFolder(id: string, parentId: string | null): Promise<Folder> {
     return safeInvoke("move_folder", FolderSchema, {
       id,
-      parent_id: parentId,
+      parentId,
     });
   },
 };

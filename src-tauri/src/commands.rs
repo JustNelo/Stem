@@ -85,18 +85,6 @@ fn map_err<T>(result: Result<T, rusqlite::Error>) -> Result<T, String> {
     result.map_err(|e| e.to_string())
 }
 
-/// Runs a blocking closure on a separate thread to avoid blocking the IPC thread.
-async fn spawn<F, T>(db: &State<'_, Database>, f: F) -> Result<T, String>
-where
-    F: FnOnce(Database) -> Result<T, String> + Send + 'static,
-    T: Send + 'static,
-{
-    let db = db.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || f(db))
-        .await
-        .map_err(|e| format!("Task failed: {}", e))?
-}
-
 /// Private sync helper — used internally by update_note & toggle_pin_note.
 fn get_note_sync(db: &Database, id: &str) -> Result<Option<Note>, String> {
     let conn = db.connection();
@@ -113,7 +101,7 @@ pub fn init_database(db: State<'_, Database>) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn create_note(db: State<'_, Database>, payload: CreateNotePayload) -> Result<Note, String> {
-    spawn(&db, move |db| {
+    db.inner().clone().spawn(move |db| {
         let id = Uuid::new_v4().to_string();
         let title = payload.title.unwrap_or_else(|| DEFAULT_TITLE.to_string());
         let content = payload.content;
@@ -129,12 +117,12 @@ pub async fn create_note(db: State<'_, Database>, payload: CreateNotePayload) ->
 
 #[tauri::command]
 pub async fn get_note(db: State<'_, Database>, id: String) -> Result<Option<Note>, String> {
-    spawn(&db, move |db| get_note_sync(&db, &id)).await
+    db.inner().clone().spawn(move |db| get_note_sync(&db, &id)).await
 }
 
 #[tauri::command]
 pub async fn get_all_notes(db: State<'_, Database>) -> Result<Vec<Note>, String> {
-    spawn(&db, move |db| {
+    db.inner().clone().spawn(move |db| {
         let conn = db.connection();
         let mut stmt = map_err(
             conn.prepare("SELECT id, title, content, created_at, updated_at, is_pinned, folder_id FROM notes ORDER BY is_pinned DESC, updated_at DESC")
@@ -147,7 +135,7 @@ pub async fn get_all_notes(db: State<'_, Database>) -> Result<Vec<Note>, String>
 
 #[tauri::command]
 pub async fn update_note(db: State<'_, Database>, payload: UpdateNotePayload) -> Result<Note, String> {
-    spawn(&db, move |db| {
+    db.inner().clone().spawn(move |db| {
         let now = current_timestamp();
         let conn = db.connection();
         if let Some(title) = &payload.title {
@@ -169,7 +157,7 @@ pub async fn update_note(db: State<'_, Database>, payload: UpdateNotePayload) ->
 
 #[tauri::command]
 pub async fn delete_note(db: State<'_, Database>, id: String) -> Result<(), String> {
-    spawn(&db, move |db| {
+    db.inner().clone().spawn(move |db| {
         let conn = db.connection();
         map_err(conn.execute("DELETE FROM notes WHERE id = ?1", [&id]))?;
         Ok(())
@@ -178,7 +166,7 @@ pub async fn delete_note(db: State<'_, Database>, id: String) -> Result<(), Stri
 
 #[tauri::command]
 pub async fn toggle_pin_note(db: State<'_, Database>, id: String) -> Result<Note, String> {
-    spawn(&db, move |db| {
+    db.inner().clone().spawn(move |db| {
         let conn = db.connection();
         map_err(conn.execute(
             "UPDATE notes SET is_pinned = CASE WHEN is_pinned = 0 THEN 1 ELSE 0 END WHERE id = ?1",
@@ -195,11 +183,13 @@ pub async fn toggle_pin_note(db: State<'_, Database>, id: String) -> Result<Note
 pub struct ExportData {
     pub version: u32,
     pub notes: Vec<Note>,
+    #[serde(default)]
+    pub folders: Vec<Folder>,
 }
 
 #[tauri::command]
 pub async fn export_all_data(db: State<'_, Database>) -> Result<String, String> {
-    spawn(&db, move |db| {
+    db.inner().clone().spawn(move |db| {
         let conn = db.connection();
 
         let mut stmt = map_err(
@@ -209,14 +199,27 @@ pub async fn export_all_data(db: State<'_, Database>) -> Result<String, String> 
             .collect::<Result<Vec<_>, _>>();
         let notes = map_err(notes)?;
 
-        let export = ExportData { version: 1, notes };
+        let mut folder_stmt = map_err(
+            conn.prepare("SELECT id, name, parent_id, position, created_at FROM folders ORDER BY position ASC")
+        )?;
+        let folders = map_err(folder_stmt.query_map([], row_to_folder))?
+            .collect::<Result<Vec<_>, _>>();
+        let folders = map_err(folders)?;
+
+        let export = ExportData { version: 1, notes, folders };
         serde_json::to_string_pretty(&export).map_err(|e| e.to_string())
     }).await
 }
 
+const MAX_IMPORT_SIZE: usize = 10 * 1024 * 1024; // 10 MB
+
 #[tauri::command]
 pub async fn import_all_data(db: State<'_, Database>, data: String) -> Result<String, String> {
-    spawn(&db, move |db| {
+    if data.len() > MAX_IMPORT_SIZE {
+        return Err(format!("Fichier trop volumineux ({:.1} MB, max {} MB)", data.len() as f64 / 1_048_576.0, MAX_IMPORT_SIZE / 1_048_576));
+    }
+
+    db.inner().clone().spawn(move |db| {
         let export: ExportData = serde_json::from_str(&data)
             .map_err(|e| format!("Format de fichier invalide: {}", e))?;
 
@@ -224,19 +227,30 @@ pub async fn import_all_data(db: State<'_, Database>, data: String) -> Result<St
         let tx = conn.transaction().map_err(|e| e.to_string())?;
 
         let mut notes_imported = 0u32;
+        let mut folders_imported = 0u32;
 
-        for note in &export.notes {
+        for folder in &export.folders {
             let exists: bool = tx
-                .query_row(
-                    "SELECT COUNT(*) > 0 FROM notes WHERE id = ?1",
-                    [&note.id],
-                    |row| row.get(0),
-                )
+                .query_row("SELECT COUNT(*) > 0 FROM folders WHERE id = ?1", [&folder.id], |row| row.get(0))
                 .map_err(|e| e.to_string())?;
             if !exists {
                 tx.execute(
-                    "INSERT INTO notes (id, title, content, created_at, updated_at, is_pinned) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                    (&note.id, &note.title, &note.content, &note.created_at, &note.updated_at, &(note.is_pinned as i32)),
+                    "INSERT INTO folders (id, name, parent_id, position, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+                    (&folder.id, &folder.name, &folder.parent_id, &folder.position, &folder.created_at),
+                )
+                .map_err(|e| e.to_string())?;
+                folders_imported += 1;
+            }
+        }
+
+        for note in &export.notes {
+            let exists: bool = tx
+                .query_row("SELECT COUNT(*) > 0 FROM notes WHERE id = ?1", [&note.id], |row| row.get(0))
+                .map_err(|e| e.to_string())?;
+            if !exists {
+                tx.execute(
+                    "INSERT INTO notes (id, title, content, created_at, updated_at, is_pinned, folder_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                    (&note.id, &note.title, &note.content, &note.created_at, &note.updated_at, &(note.is_pinned as i32), &note.folder_id),
                 )
                 .map_err(|e| e.to_string())?;
                 notes_imported += 1;
@@ -244,7 +258,7 @@ pub async fn import_all_data(db: State<'_, Database>, data: String) -> Result<St
         }
 
         tx.commit().map_err(|e| e.to_string())?;
-        Ok(format!("{} notes importées", notes_imported))
+        Ok(format!("{} notes, {} dossiers importés", notes_imported, folders_imported))
     }).await
 }
 
@@ -252,7 +266,7 @@ pub async fn import_all_data(db: State<'_, Database>, data: String) -> Result<St
 
 #[tauri::command]
 pub async fn get_all_folders(db: State<'_, Database>) -> Result<Vec<Folder>, String> {
-    spawn(&db, move |db| {
+    db.inner().clone().spawn(move |db| {
         let conn = db.connection();
         let mut stmt = map_err(
             conn.prepare("SELECT id, name, parent_id, position, created_at FROM folders ORDER BY position ASC, created_at ASC")
@@ -265,7 +279,7 @@ pub async fn get_all_folders(db: State<'_, Database>) -> Result<Vec<Folder>, Str
 
 #[tauri::command]
 pub async fn create_folder(db: State<'_, Database>, payload: CreateFolderPayload) -> Result<Folder, String> {
-    spawn(&db, move |db| {
+    db.inner().clone().spawn(move |db| {
         let id = Uuid::new_v4().to_string();
         let now = current_timestamp();
         let conn = db.connection();
@@ -289,7 +303,7 @@ pub async fn create_folder(db: State<'_, Database>, payload: CreateFolderPayload
 
 #[tauri::command]
 pub async fn rename_folder(db: State<'_, Database>, payload: RenameFolderPayload) -> Result<Folder, String> {
-    spawn(&db, move |db| {
+    db.inner().clone().spawn(move |db| {
         let conn = db.connection();
         map_err(conn.execute(
             "UPDATE folders SET name = ?1 WHERE id = ?2",
@@ -308,7 +322,7 @@ pub async fn rename_folder(db: State<'_, Database>, payload: RenameFolderPayload
 
 #[tauri::command]
 pub async fn delete_folder(db: State<'_, Database>, id: String) -> Result<(), String> {
-    spawn(&db, move |db| {
+    db.inner().clone().spawn(move |db| {
         let conn = db.connection();
         // Move notes in this folder back to root
         map_err(conn.execute(
@@ -328,7 +342,7 @@ pub async fn delete_folder(db: State<'_, Database>, id: String) -> Result<(), St
 
 #[tauri::command]
 pub async fn move_note_to_folder(db: State<'_, Database>, note_id: String, folder_id: Option<String>) -> Result<Note, String> {
-    spawn(&db, move |db| {
+    db.inner().clone().spawn(move |db| {
         let conn = db.connection();
         map_err(conn.execute(
             "UPDATE notes SET folder_id = ?1, updated_at = ?2 WHERE id = ?3",
@@ -341,7 +355,7 @@ pub async fn move_note_to_folder(db: State<'_, Database>, note_id: String, folde
 
 #[tauri::command]
 pub async fn move_folder(db: State<'_, Database>, id: String, parent_id: Option<String>) -> Result<Folder, String> {
-    spawn(&db, move |db| {
+    db.inner().clone().spawn(move |db| {
         let conn = db.connection();
         map_err(conn.execute(
             "UPDATE folders SET parent_id = ?1 WHERE id = ?2",

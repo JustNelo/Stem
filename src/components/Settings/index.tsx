@@ -28,7 +28,6 @@ export function Settings({ onClose }: SettingsProps) {
   return (
     <div className="flex h-screen w-screen flex-col bg-surface pt-8">
       <div className="texture-overlay pointer-events-none fixed inset-0 z-50" />
-      <div className="theme-effect pointer-events-none fixed inset-0 z-0" />
 
       <div className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col overflow-hidden px-8 py-6">
         {/* Header */}

@@ -30,7 +30,7 @@ pub struct SemanticResult {
 fn current_timestamp() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
+        .unwrap_or_default()
         .as_secs() as i64
 }
 
@@ -56,18 +56,6 @@ fn bytes_to_embedding(bytes: &[u8]) -> Vec<f32> {
         .chunks_exact(4)
         .map(|chunk| f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
         .collect()
-}
-
-/// Runs a blocking closure on a separate thread.
-async fn spawn<F, T>(db: &State<'_, Database>, f: F) -> Result<T, String>
-where
-    F: FnOnce(Database) -> Result<T, String> + Send + 'static,
-    T: Send + 'static,
-{
-    let db = db.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || f(db))
-        .await
-        .map_err(|e| format!("Task failed: {}", e))?
 }
 
 // ===== Tauri Commands =====
@@ -125,7 +113,7 @@ pub async fn generate_embedding(
     let now = current_timestamp();
 
     // Store in DB
-    spawn(&db, move |db| {
+    db.inner().clone().spawn(move |db| {
         let conn = db.connection();
         conn.execute(
             "INSERT OR REPLACE INTO note_embeddings (note_id, embedding, model, updated_at) VALUES (?1, ?2, ?3, ?4)",
@@ -189,7 +177,7 @@ pub async fn search_similar_notes(
         .ok_or_else(|| "No embedding returned".to_string())?;
 
     // Compare against all stored embeddings
-    spawn(&db, move |db| {
+    db.inner().clone().spawn(move |db| {
         let conn = db.connection();
         let mut stmt = conn
             .prepare(
@@ -232,7 +220,7 @@ pub async fn search_similar_notes(
 /// Delete the embedding for a given note (called when note is deleted).
 #[tauri::command]
 pub async fn delete_embedding(db: State<'_, Database>, note_id: String) -> Result<(), String> {
-    spawn(&db, move |db| {
+    db.inner().clone().spawn(move |db| {
         let conn = db.connection();
         conn.execute("DELETE FROM note_embeddings WHERE note_id = ?1", [&note_id])
             .map_err(|e| e.to_string())?;

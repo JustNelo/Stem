@@ -1,6 +1,4 @@
-import { memo } from "react";
-import { useDraggable } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
+import { memo, useCallback } from "react";
 import { Pin, Trash2, FileText } from "lucide-react";
 import { formatRelativeTime } from "@/lib/format";
 import { IconButton } from "@/components/ui/IconButton";
@@ -21,30 +19,27 @@ export const NoteListItem = memo(function NoteListItem({
   onTogglePin,
   onRequestDelete,
 }: NoteListItemProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `note-${note.id}`,
-    data: { type: "note", noteId: note.id },
-  });
-
-  const style = transform
-    ? { transform: CSS.Translate.toString(transform), zIndex: 50, opacity: 0.8 }
-    : undefined;
+  const handleDragStart = useCallback(
+    (e: React.DragEvent) => {
+      e.dataTransfer.setData("application/stem-type", "note");
+      e.dataTransfer.setData("application/stem-id", note.id);
+      e.dataTransfer.effectAllowed = "move";
+    },
+    [note.id],
+  );
 
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
+      draggable
+      onDragStart={handleDragStart}
       className={`group relative flex w-full items-center rounded-md transition-all duration-150 ${
-        isDragging
-          ? "shadow-lg ring-1 ring-accent/30"
-          : isSelected
-            ? "bg-surface-hover/80"
-            : "hover:bg-surface-hover/50"
+        isSelected
+          ? "bg-surface-hover/80"
+          : "hover:bg-surface-hover/50"
       }`}
     >
       <button
+        draggable={false}
         onClick={() => onSelect(note)}
         className="flex min-w-0 flex-1 cursor-pointer items-start gap-2.5 px-2.5 py-2 text-left"
       >

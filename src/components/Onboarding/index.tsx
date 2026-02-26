@@ -64,7 +64,6 @@ export function Onboarding() {
   return (
     <div className="flex min-h-screen w-screen flex-col overflow-y-auto bg-surface pt-8">
       <div className="texture-overlay pointer-events-none fixed inset-0 z-50" />
-      <div className="theme-effect pointer-events-none fixed inset-0 z-0" />
 
       <div className="relative z-10 m-auto w-full max-w-lg px-6 py-12">
         {/* Progress bar */}

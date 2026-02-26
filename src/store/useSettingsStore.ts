@@ -99,14 +99,7 @@ export const useSettingsStore = create<SettingsState>()(
         set({ ...DEFAULT_SETTINGS });
       },
     }),
-    {
-      name: "stem-settings",
-      onRehydrateStorage: () => (state) => {
-        if (state && state.ollamaModel === "mistral") {
-          state.ollamaModel = "qwen2.5:32b";
-        }
-      },
-    }
+    { name: "stem-settings" }
   )
 );
 
