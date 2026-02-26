@@ -26,7 +26,7 @@ export function Settings({ onClose }: SettingsProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
 
   return (
-    <div className="flex h-screen w-screen flex-col bg-surface pt-10">
+    <div className="flex h-screen w-screen flex-col bg-surface pt-8">
       <div className="texture-overlay pointer-events-none fixed inset-0 z-50" />
       <div className="theme-effect pointer-events-none fixed inset-0 z-0" />
 

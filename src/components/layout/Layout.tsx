@@ -69,7 +69,7 @@ export function Layout({
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -10 }}
-          className="fixed left-3 top-13 z-30"
+          className="fixed left-3 top-10 z-30"
         >
           <IconButton
             label="Ouvrir le panneau (Ctrl+B)"
@@ -83,7 +83,7 @@ export function Layout({
       )}
 
       {/* CENTER COLUMN — Editor */}
-      <main className="relative z-10 flex flex-1 flex-col overflow-hidden pt-10">
+      <main className="relative z-10 flex flex-1 flex-col overflow-hidden pt-8">
         <div className="flex flex-1 overflow-y-auto">
           <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-8 py-6">{children}</div>
         </div>
@@ -101,7 +101,7 @@ export function Layout({
           initial={{ opacity: 0, x: 10 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 10 }}
-          className="fixed right-3 top-13 z-30"
+          className="fixed right-3 top-10 z-30"
         >
           <IconButton
             label="Ouvrir le copilot (Ctrl+J)"

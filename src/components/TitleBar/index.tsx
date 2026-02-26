@@ -50,17 +50,14 @@ export function TitleBar({ onOpenSettings }: TitleBarProps) {
   return (
     <div
       onMouseDown={handleDrag}
-      className="fixed left-0 right-0 top-0 z-50 flex h-10 cursor-default items-center justify-between bg-surface border-b"
+      className="fixed left-0 right-0 top-0 z-50 flex h-8 cursor-default items-center justify-between bg-surface border-b border-border/50"
     >
-      {/* Left side - App name */}
+      {/* Left side — draggable area */}
       <div
         onMouseDown={handleDrag}
-        className="flex flex-1 items-center gap-2 px-4"
-      >
-        <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-          STEM
-        </span>
-      </div>
+        className="flex flex-1 items-center px-4"
+      />
+
 
       {/* Right side - Settings + Window controls */}
       <div className="flex items-center gap-1 pr-3">

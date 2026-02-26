@@ -125,6 +125,7 @@ function App() {
                 localTitle={localTitle}
                 onTitleChange={handleTitleChange}
                 noteContent={selectedNote.content}
+                folderId={selectedNote.folder_id}
                 onReview={openReview}
               />
               <Suspense fallback={null}>
@@ -149,13 +150,13 @@ function App() {
 
 function EmptyState() {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-      <h1 className="select-none text-6xl font-black uppercase leading-none tracking-tighter text-border opacity-50">
+    <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+      <span className="select-none text-3xl font-bold uppercase tracking-tighter text-border">
         STEM
-      </h1>
-      <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+      </span>
+      <p className="text-[11px] text-text-muted">
         Sélectionnez une note ou appuyez sur{" "}
-        <kbd className="rounded border border-border bg-surface-elevated px-1.5 py-0.5">
+        <kbd className="rounded bg-surface-hover px-1.5 py-0.5 font-mono text-[10px]">
           Ctrl+K
         </kbd>{" "}
         pour rechercher

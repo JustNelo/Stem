@@ -62,7 +62,7 @@ export function Onboarding() {
   };
 
   return (
-    <div className="flex min-h-screen w-screen flex-col overflow-y-auto bg-surface pt-10">
+    <div className="flex min-h-screen w-screen flex-col overflow-y-auto bg-surface pt-8">
       <div className="texture-overlay pointer-events-none fixed inset-0 z-50" />
       <div className="theme-effect pointer-events-none fixed inset-0 z-0" />
 
