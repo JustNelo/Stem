@@ -34,7 +34,8 @@ export function useAICommand() {
         );
         return result;
       } catch (error) {
-        throw new Error(`${error}. Vérifiez qu'Ollama est lancé.`);
+        const msg = error instanceof Error ? error.message : String(error);
+        throw new Error(`${msg}. Vérifiez qu'Ollama est lancé.`);
       } finally {
         setIsProcessing(false);
       }

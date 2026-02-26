@@ -12,12 +12,13 @@ const EMBEDDING_DEBOUNCE_MS = 5000; // 5s after last save
  */
 export function useEmbeddingSync() {
   const selectedNote = useNotesStore((s) => s.selectedNote);
+  const aiEnabled = useSettingsStore((s) => s.aiEnabled);
   const embeddingModel = useSettingsStore((s) => s.embeddingModel);
   const ollamaUrl = useSettingsStore((s) => s.ollamaUrl);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!selectedNote?.id || !selectedNote.content) return;
+    if (!aiEnabled || !selectedNote?.id || !selectedNote.content) return;
 
     // Clear any pending embedding generation
     if (timerRef.current) clearTimeout(timerRef.current);

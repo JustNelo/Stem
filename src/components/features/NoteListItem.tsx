@@ -48,10 +48,10 @@ export const NoteListItem = memo(function NoteListItem({
           className={`mt-0.5 shrink-0 transition-colors duration-200 ${isSelected ? "text-accent" : "text-text-ghost group-hover:text-text-muted"}`}
         />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[13px] font-medium tracking-tight text-text">
+          <div className="truncate text-[13px] font-medium leading-tight tracking-tight text-text">
             {note.title || "Sans titre"}
           </div>
-          <span className="text-[10px] text-text-muted">
+          <span className="mt-px block text-[10px] leading-tight text-text-muted">
             {formatRelativeTime(note.updated_at)}
           </span>
         </div>

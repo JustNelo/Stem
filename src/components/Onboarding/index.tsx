@@ -4,9 +4,10 @@ import { ArrowRight, ArrowLeft, Sparkles } from "lucide-react";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { StepWrapper } from "@/components/Onboarding/steps/StepWrapper";
 import { WelcomeStep } from "@/components/Onboarding/steps/WelcomeStep";
+import { AISetupStep } from "@/components/Onboarding/steps/AISetupStep";
 import { SummaryStep } from "@/components/Onboarding/steps/SummaryStep";
 
-const TOTAL_STEPS = 2;
+const TOTAL_STEPS = 3;
 
 export function Onboarding() {
   const setUserName = useSettingsStore((s) => s.setUserName);
@@ -72,6 +73,11 @@ export function Onboarding() {
             )}
             {step === 1 && (
               <StepWrapper key="step-1" direction={direction}>
+                <AISetupStep />
+              </StepWrapper>
+            )}
+            {step === 2 && (
+              <StepWrapper key="step-2" direction={direction}>
                 <SummaryStep name={name} />
               </StepWrapper>
             )}

@@ -10,7 +10,6 @@ import { BlockNoteView } from "@blocknote/mantine";
 import { codeBlockOptions } from "@blocknote/code-block";
 import { AIChatService } from "@/services/ai-chat";
 import { useSettingsStore } from "@/store/useSettingsStore";
-import type { ModelMessage } from "ai";
 import { AI_SLASH_COMMANDS, createAISlashMenuItem } from "@/lib/slash-commands";
 
 const schema = BlockNoteSchema.create().extend({
@@ -47,7 +46,7 @@ export function Editor({ initialContent, onChange }: EditorProps) {
   // AI execution handler for slash commands — streams via AI SDK
   const handleAIExecute = useCallback(
     async (prompt: string): Promise<string> => {
-      const messages: ModelMessage[] = [
+      const messages = [
         { role: "system", content: "Tu es un assistant intelligent. Réponds TOUJOURS en français sauf si demande explicite. Utilise un style clair et structuré." },
         { role: "user", content: prompt },
       ];

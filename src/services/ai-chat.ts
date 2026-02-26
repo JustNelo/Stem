@@ -1,14 +1,17 @@
-import { generateText, streamText, stepCountIs } from "ai";
-import { streamText as ollamaStreamText } from "ai-sdk-ollama";
-import { buildTools } from "@/lib/ai-tools";
-import type { StoreCallbacks } from "@/services/ai-tools-dispatcher";
-import { getOllamaModel } from "@/services/ollama-client";
-import type { ModelMessage } from "ai";
+import { z } from "zod";
+import { safeInvoke } from "@/lib/tauri";
+import { dispatchToolCall, type StoreCallbacks } from "@/services/ai-tools-dispatcher";
+import type { AIToolCall } from "@/lib/ai-tools";
 
 export interface ChatTurn {
   role: "user" | "assistant" | "tool";
   content: string;
   tool_name?: string;
+}
+
+interface RustChatMessage {
+  role: string;
+  content: string;
 }
 
 const SYSTEM_PROMPT = `Tu es Stem Copilot, un assistant intégré à l'application de notes Stem.
@@ -17,40 +20,75 @@ const SYSTEM_PROMPT = `Tu es Stem Copilot, un assistant intégré à l'applicati
 Réponds TOUJOURS en français, sauf demande explicite contraire.
 
 ## Outils
-Tu DOIS utiliser les outils pour toute action sur les notes — ne décris jamais une action, exécute-la.
-- Créer → create_note
-- Modifier → list_notes puis update_note
-- Ajouter du contenu → append_to_note
-- Lire / chercher → search_notes ou read_note
+Tu disposes d'outils pour agir sur les notes. Pour les utiliser, réponds UNIQUEMENT avec un bloc JSON :
+\`\`\`tool
+{"name": "nom_outil", "arguments": { ... }}
+\`\`\`
+
+Outils disponibles :
+- list_notes : Liste toutes les notes (pas d'arguments)
+- read_note : Lit une note (arguments: note_id)
+- create_note : Crée une note (arguments: title, content?)
+- update_note : Modifie une note (arguments: note_id, title?, content?)
+- delete_note : Supprime une note (arguments: note_id)
+- append_to_note : Ajoute du contenu (arguments: note_id, content)
+- search_notes : Recherche (arguments: query)
 
 ## Contenu des notes
 Le contenu passé aux outils DOIT être riche en Markdown :
 - Titres (## ###), listes (- ou 1.), code (\`\`\`langage), **gras**, *italique*
 - Contenu complet et pédagogique avec exemples concrets
-- En programmation, toujours inclure des exemples de code commentés
 
 ## Réponses dans le chat
-- Sois **bref et naturel** dans tes confirmations (1-2 phrases max).
-- Ne mentionne JAMAIS les IDs techniques des notes — l'utilisateur n'en a pas besoin.
-- Ne répète JAMAIS le contenu d'une note dans le chat. Dis simplement ce que tu as fait.
-- Exemples de bonnes confirmations :
-  - "J'ai créé la note « Introduction à Python »."
-  - "Note mise à jour avec les nouveaux exemples."
-  - "Voici un résumé de ta note : …"
-- Exemples de MAUVAISES confirmations (à éviter) :
-  - "La note a été créée avec l'ID abc-123-def."
-  - "Voici le contenu que j'ai inséré : [tout le contenu]"
+- Sois **bref et naturel** (1-2 phrases max).
+- Ne mentionne JAMAIS les IDs techniques des notes.
+- Ne répète JAMAIS le contenu d'une note dans le chat.
 
 ## Style conversationnel
 - Réponds comme un collègue bienveillant, pas comme un robot.
-- Utilise des phrases courtes et directes.
-- Tu peux utiliser du Markdown dans le chat (listes, gras) pour structurer tes réponses quand c'est utile.`;
+- Utilise des phrases courtes et directes.`;
 
 const MAX_HISTORY_TURNS = 20;
+const MAX_TOOL_ROUNDS = 5;
 
 function boundHistory(history: ChatTurn[]): ChatTurn[] {
   if (history.length <= MAX_HISTORY_TURNS) return history;
   return history.slice(history.length - MAX_HISTORY_TURNS);
+}
+
+function buildMessages(
+  systemContent: string,
+  history: ChatTurn[],
+  userMessage: string,
+): RustChatMessage[] {
+  const msgs: RustChatMessage[] = [{ role: "system", content: systemContent }];
+
+  for (const h of history) {
+    if (h.role === "tool") {
+      msgs.push({ role: "user", content: `[Résultat outil ${h.tool_name ?? ""}]: ${h.content}` });
+    } else {
+      msgs.push({ role: h.role, content: h.content });
+    }
+  }
+
+  msgs.push({ role: "user", content: userMessage });
+  return msgs;
+}
+
+const TOOL_BLOCK_RE = /```tool\s*\n([\s\S]*?)\n```/;
+
+function extractToolCall(text: string): AIToolCall | null {
+  const match = TOOL_BLOCK_RE.exec(text);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[1]);
+    if (parsed.name && typeof parsed.name === "string") {
+      return { name: parsed.name, arguments: parsed.arguments ?? {} };
+    }
+  } catch {
+    // Model produced malformed JSON — not a tool call
+  }
+  return null;
 }
 
 export interface ChatOptions {
@@ -60,11 +98,9 @@ export interface ChatOptions {
 }
 
 /**
- * Agentic chat service using Vercel AI SDK + ai-sdk-ollama.
- *
- * generateText() handles the ReAct loop automatically via stopWhen: stepCountIs(8).
- * Each tool has Zod-validated inputs — malformed calls from small models are caught
- * before execution. onStepFinish notifies the UI of each tool call in progress.
+ * Chat service routed through the Rust backend (ollama_chat IPC command).
+ * Tool calls are detected via a ```tool JSON block convention, executed locally,
+ * then the result is fed back for up to MAX_TOOL_ROUNDS iterations.
  */
 export const AIChatService = {
   async chat(
@@ -80,45 +116,40 @@ export const AIChatService = {
       : SYSTEM_PROMPT;
 
     const bounded = boundHistory(history);
+    const messages = buildMessages(systemContent, bounded, userMessage);
 
-    const messages: ModelMessage[] = [
-      ...bounded.map((h): ModelMessage => {
-        if (h.role === "tool") return { role: "tool", content: [{ type: "tool-result" as const, toolCallId: crypto.randomUUID(), toolName: h.tool_name ?? "unknown", output: { type: "text" as const, value: h.content } }] };
-        if (h.role === "assistant") return { role: "assistant", content: h.content };
-        return { role: "user", content: h.content };
-      }),
-      { role: "user", content: userMessage },
-    ];
+    let lastResponse = "";
 
-    const tools = buildTools(options?.storeCallbacks);
+    for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+      if (options?.abortSignal?.aborted) throw new Error("Génération annulée.");
 
-    const result = await generateText({
-      model: getOllamaModel(model, ollamaUrl),
-      system: systemContent,
-      messages,
-      tools,
-      stopWhen: stepCountIs(8),
-      temperature: 0.4,
-      abortSignal: options?.abortSignal,
-      providerOptions: {
-        ollama: { options: { num_ctx: 32768 } },
-      },
-      onStepFinish: ({ toolCalls }) => {
-        for (const tc of toolCalls) {
-          options?.onToolCall?.(tc.toolName);
-        }
-      },
-    });
+      lastResponse = await safeInvoke("ollama_chat", z.string(), {
+        messages,
+        model,
+        ollamaUrl,
+      });
 
-    const lastStep = result.steps[result.steps.length - 1];
-    const lastStepText = lastStep?.text ?? result.text;
-    return lastStepText.trim() || "Pas de réponse.";
+      const toolCall = extractToolCall(lastResponse);
+      if (!toolCall) break;
+
+      options?.onToolCall?.(toolCall.name);
+
+      const toolResult = await dispatchToolCall(toolCall, options?.storeCallbacks);
+
+      messages.push({ role: "assistant", content: lastResponse });
+      messages.push({
+        role: "user",
+        content: `[Résultat outil ${toolCall.name}]: ${toolResult.result}`,
+      });
+    }
+
+    const cleanResponse = lastResponse.replace(TOOL_BLOCK_RE, "").trim();
+    return cleanResponse || lastResponse.trim() || "Pas de réponse.";
   },
 
   /**
-   * Streaming variant of chat() — yields text tokens in real time while
-   * still executing tool calls in multi-step mode.
-   * Prefer this over chat() for interactive UI — user sees tokens appearing.
+   * Non-streaming chat that yields the full response at once.
+   * Used by the main chat interface — behaves like a stream with a single chunk.
    */
   async *chatStream(
     userMessage: string,
@@ -128,68 +159,37 @@ export const AIChatService = {
     noteContext: string | null,
     options?: ChatOptions,
   ): AsyncGenerator<string> {
-    const systemContent = noteContext
-      ? `${SYSTEM_PROMPT}\n\nNote actuellement ouverte :\n---\n${noteContext}\n---`
-      : SYSTEM_PROMPT;
-
-    const bounded = boundHistory(history);
-
-    const messages: ModelMessage[] = [
-      ...bounded.map((h): ModelMessage => {
-        if (h.role === "tool") return { role: "tool", content: [{ type: "tool-result" as const, toolCallId: crypto.randomUUID(), toolName: h.tool_name ?? "unknown", output: { type: "text" as const, value: h.content } }] };
-        if (h.role === "assistant") return { role: "assistant", content: h.content };
-        return { role: "user", content: h.content };
-      }),
-      { role: "user", content: userMessage },
-    ];
-
-    const tools = buildTools(options?.storeCallbacks);
-
-    const result = streamText({
-      model: getOllamaModel(model, ollamaUrl),
-      system: systemContent,
-      messages,
-      tools,
-      stopWhen: stepCountIs(8),
-      temperature: 0.4,
-      abortSignal: options?.abortSignal,
-      providerOptions: {
-        ollama: { options: { num_ctx: 32768 } },
-      },
-      onStepFinish: ({ toolCalls }) => {
-        for (const tc of toolCalls) {
-          options?.onToolCall?.(tc.toolName);
-        }
-      },
-    });
-
-    for await (const token of result.textStream) {
-      if (token) yield token;
-    }
+    const result = await AIChatService.chat(
+      userMessage,
+      history,
+      model,
+      ollamaUrl,
+      noteContext,
+      options,
+    );
+    yield result;
   },
 
   /**
-   * Streams a single assistant response token by token.
-   * Used by slash commands (/resume, /corriger, etc.) that do not need tool use.
+   * Simple single-turn chat for slash commands (/resume, /corriger, etc.).
+   * No tool use, just sends messages and returns the response.
    */
   async *stream(
-    messages: ModelMessage[],
+    messages: { role: string; content: string }[],
     model: string,
     ollamaUrl: string,
-    abortSignal?: AbortSignal,
   ): AsyncGenerator<string> {
-    const result = await ollamaStreamText({
-      model: getOllamaModel(model, ollamaUrl),
-      messages,
-      temperature: 0.7,
-      abortSignal,
-      providerOptions: {
-        ollama: { options: { num_ctx: 32768 } },
-      },
+    const rustMessages: RustChatMessage[] = messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    const result = await safeInvoke("ollama_chat", z.string(), {
+      messages: rustMessages,
+      model,
+      ollamaUrl,
     });
 
-    for await (const token of result.textStream) {
-      if (token) yield token;
-    }
+    yield result || "Résultat vide.";
   },
 };

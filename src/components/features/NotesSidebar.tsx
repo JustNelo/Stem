@@ -175,10 +175,13 @@ export function NotesSidebar({
 
   const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
 
-  const handleConfirmDeleteFolder = useCallback(() => {
-    if (folderToDelete) deleteFolder(folderToDelete);
+  const handleConfirmDeleteFolder = useCallback(async () => {
+    if (folderToDelete) {
+      await deleteFolder(folderToDelete);
+      await fetchNotes();
+    }
     setFolderToDelete(null);
-  }, [folderToDelete, deleteFolder]);
+  }, [folderToDelete, deleteFolder, fetchNotes]);
 
   const handleCreateFolder = useCallback(() => {
     createFolder("Nouveau dossier");

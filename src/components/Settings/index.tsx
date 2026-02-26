@@ -1,20 +1,18 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, User, Bot, Database, GitBranch } from "lucide-react";
+import { ArrowLeft, User, Bot, Database } from "lucide-react";
 import { useAppVersion } from "@/hooks/useAppVersion";
 import { cn } from "@/lib";
 import { ProfileTab } from "@/components/Settings/tabs/ProfileTab";
 import { AITab } from "@/components/Settings/tabs/AITab";
 import { DataTab } from "@/components/Settings/tabs/DataTab";
-import { GitTab } from "@/components/Settings/tabs/GitTab";
 
-type SettingsTab = "profile" | "ai" | "data" | "git";
+type SettingsTab = "profile" | "ai" | "data";
 
 const TABS: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
   { id: "profile", label: "Profil", icon: <User size={14} /> },
   { id: "ai", label: "IA", icon: <Bot size={14} /> },
   { id: "data", label: "Données", icon: <Database size={14} /> },
-  { id: "git", label: "Git", icon: <GitBranch size={14} /> },
 ];
 
 interface SettingsProps {
@@ -75,7 +73,6 @@ export function Settings({ onClose }: SettingsProps) {
               {activeTab === "profile" && <ProfileTab />}
               {activeTab === "ai" && <AITab />}
               {activeTab === "data" && <DataTab />}
-              {activeTab === "git" && <GitTab />}
             </motion.div>
           </AnimatePresence>
 

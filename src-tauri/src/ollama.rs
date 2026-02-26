@@ -23,6 +23,82 @@ struct OllamaModelsResponse {
     models: Vec<OllamaModelInfo>,
 }
 
+// --- /api/chat types ---
+
+#[derive(Serialize, Deserialize, Clone)]
+pub(crate) struct ChatMessage {
+    role: String,
+    content: String,
+}
+
+#[derive(Serialize)]
+struct OllamaChatRequest {
+    model: String,
+    messages: Vec<ChatMessage>,
+    stream: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    options: Option<OllamaChatOptions>,
+}
+
+#[derive(Serialize)]
+struct OllamaChatOptions {
+    temperature: f32,
+    num_ctx: u32,
+}
+
+#[derive(Deserialize)]
+struct OllamaChatResponse {
+    message: ChatMessage,
+}
+
+#[tauri::command]
+pub async fn ollama_chat(
+    messages: Vec<ChatMessage>,
+    model: String,
+    ollama_url: String,
+) -> Result<String, String> {
+    let base_url = if ollama_url.is_empty() {
+        "http://localhost:11434".to_string()
+    } else {
+        ollama_url
+    };
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(180))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let request = OllamaChatRequest {
+        model,
+        messages,
+        stream: false,
+        options: Some(OllamaChatOptions {
+            temperature: 0.4,
+            num_ctx: 32768,
+        }),
+    };
+
+    let response = client
+        .post(format!("{}/api/chat", base_url))
+        .json(&request)
+        .send()
+        .await
+        .map_err(|e| format!("Impossible de joindre Ollama. Vérifiez qu'il est lancé. ({})", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(format!("Ollama a retourné une erreur {} : {}", status, body));
+    }
+
+    let chat_response: OllamaChatResponse = response
+        .json()
+        .await
+        .map_err(|e| format!("Erreur parsing réponse Ollama: {}", e))?;
+
+    Ok(chat_response.message.content.trim().to_string())
+}
+
 
 #[tauri::command]
 pub async fn summarize_note(

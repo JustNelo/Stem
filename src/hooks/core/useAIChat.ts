@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import type { ModelMessage } from "ai";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useNotesStore } from "@/store/useNotesStore";
 import { useToastStore } from "@/store/useToastStore";
@@ -168,7 +167,7 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
           // Slash commands build a prompt via onExecuteCommand then stream it (no tools needed)
           const prompt = await onExecuteCommand(command.action, args);
           const streamingMsg = addMessage({ type: "assistant", content: "", command: commandName });
-          const streamMessages: ModelMessage[] = [
+          const streamMessages = [
             {
               role: "system",
               content:
@@ -180,7 +179,8 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
             updateMessageContent(streamingMsg.id, token);
           }
       } catch (error) {
-        addMessage({ type: "error", content: `Erreur: ${error}` });
+        const msg = error instanceof Error ? error.message : String(error);
+        addMessage({ type: "error", content: msg });
       } finally {
         setLocalProcessing(false);
       }
@@ -238,7 +238,8 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
         if (controller.signal.aborted) {
           addMessage({ type: "error", content: "Génération annulée." });
         } else {
-          addMessage({ type: "error", content: `Erreur: ${error}` });
+          const msg = error instanceof Error ? error.message : String(error);
+          addMessage({ type: "error", content: msg });
         }
       } finally {
         abortRef.current = null;

@@ -1,5 +1,6 @@
 import { useAppStore } from "@/store/useAppStore";
 import { useNotesStore } from "@/store/useNotesStore";
+import { useSettingsStore } from "@/store/useSettingsStore";
 import { useKeyboardShortcut } from "@/hooks/useKeyboardShortcut";
 
 /**
@@ -15,6 +16,7 @@ import { useKeyboardShortcut } from "@/hooks/useKeyboardShortcut";
 export function useAppShortcuts() {
   const toggleLeft = useAppStore((s) => s.toggleLeftSidebar);
   const toggleRight = useAppStore((s) => s.toggleRightSidebar);
+  const aiEnabled = useSettingsStore((s) => s.aiEnabled);
   const togglePalette = useAppStore((s) => s.toggleCommandPalette);
   const toggleSettings = useAppStore((s) => s.toggleSettings);
   const commandPaletteOpen = useAppStore((s) => s.commandPaletteOpen);
@@ -24,7 +26,7 @@ export function useAppShortcuts() {
 
   useKeyboardShortcut([
     { key: "b", ctrl: true, global: true, handler: () => toggleLeft() },
-    { key: "j", ctrl: true, global: true, handler: () => toggleRight() },
+    { key: "j", ctrl: true, global: true, handler: () => { if (aiEnabled) toggleRight(); } },
     { key: "k", ctrl: true, global: true, handler: () => togglePalette() },
     { key: ",", ctrl: true, global: true, handler: () => toggleSettings() },
     { key: "n", ctrl: true, global: true, handler: () => createNote() },

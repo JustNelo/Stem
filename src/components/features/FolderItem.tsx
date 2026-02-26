@@ -214,8 +214,11 @@ export const FolderItem = memo(function FolderItem({
               onDropItem={onDropItem}
             />
           ))}
-          {/* Notes in this folder */}
-          {notes.map((note) => (
+          {/* Notes in this folder — pinned first */}
+          {[...notes].sort((a, b) => {
+            if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
+            return b.updated_at - a.updated_at;
+          }).map((note) => (
             <NoteListItem
               key={note.id}
               note={note}

@@ -4,7 +4,7 @@ import { Menu, Sparkles } from "lucide-react";
 import { IconButton } from "@/components/ui/IconButton";
 import { useNotesStore } from "@/store/useNotesStore";
 import { useAppStore } from "@/store/useAppStore";
-import { useGitSync } from "@/hooks/useGitSync";
+import { useSettingsStore } from "@/store/useSettingsStore";
 import { countWords } from "@/lib/format";
 import { AISidebar } from "@/components/AISidebar";
 import { StatusBar } from "@/components/StatusBar";
@@ -33,7 +33,7 @@ export function Layout({
   const setLeftOpen = useAppStore((s) => s.setLeftSidebarOpen);
   const setRightOpen = useAppStore((s) => s.setRightSidebarOpen);
 
-  const { syncStatus: gitSyncStatus } = useGitSync();
+  const aiEnabled = useSettingsStore((s) => s.aiEnabled);
 
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
 
@@ -88,13 +88,13 @@ export function Layout({
         {/* Status bar */}
         {selectedNote && (
           <div className="flex w-full shrink-0 justify-end border-t border-border-metallic/30 px-4 py-1.5">
-            <StatusBar saveStatus={saveStatus} wordCount={wordCount} gitStatus={gitSyncStatus} />
+            <StatusBar saveStatus={saveStatus} wordCount={wordCount} />
           </div>
         )}
       </main>
 
-      {/* AI Sidebar toggle button (visible when closed) */}
-      {!rightOpen && (
+      {/* AI Sidebar toggle button (visible when closed and AI enabled) */}
+      {aiEnabled && !rightOpen && (
         <motion.div
           initial={{ opacity: 0, x: 10 }}
           animate={{ opacity: 1, x: 0 }}
@@ -113,12 +113,14 @@ export function Layout({
       )}
 
       {/* RIGHT COLUMN — AI sidebar */}
-      <AISidebar
-        isOpen={rightOpen}
-        onClose={() => setRightOpen(false)}
-        onExecuteCommand={onExecuteCommand}
-        isProcessing={isProcessing}
-      />
+      {aiEnabled && (
+        <AISidebar
+          isOpen={rightOpen}
+          onClose={() => setRightOpen(false)}
+          onExecuteCommand={onExecuteCommand}
+          isProcessing={isProcessing}
+        />
+      )}
 
       {/* Delete confirmation modal */}
       {noteToDelete && (

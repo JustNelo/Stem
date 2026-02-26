@@ -35,4 +35,3 @@ export interface SemanticResult {
   score: number;
 }
 
-export type GitSyncStatus = "idle" | "syncing" | "synced" | "error";

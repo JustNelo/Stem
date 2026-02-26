@@ -7,21 +7,17 @@ interface SettingsState {
   hasCompletedOnboarding: boolean;
 
   // AI
+  aiEnabled: boolean;
   ollamaModel: string;
   ollamaUrl: string;
   embeddingModel: string;
 
-  // Git Sync
-  gitRepoPath: string;
-  gitAutoSync: boolean;
-
   // Actions
   setUserName: (name: string) => void;
+  setAiEnabled: (enabled: boolean) => void;
   setOllamaModel: (model: string) => void;
   setOllamaUrl: (url: string) => void;
   setEmbeddingModel: (model: string) => void;
-  setGitRepoPath: (path: string) => void;
-  setGitAutoSync: (enabled: boolean) => void;
   completeOnboarding: () => void;
   resetSettings: () => void;
   resetOnboarding: () => void;
@@ -30,11 +26,10 @@ interface SettingsState {
 const DEFAULT_SETTINGS = {
   userName: "",
   hasCompletedOnboarding: false,
-  ollamaModel: "qwen2.5",
+  aiEnabled: true,
+  ollamaModel: "mistral:latest",
   ollamaUrl: "http://localhost:11434",
   embeddingModel: "nomic-embed-text",
-  gitRepoPath: "",
-  gitAutoSync: false,
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -43,11 +38,10 @@ export const useSettingsStore = create<SettingsState>()(
       ...DEFAULT_SETTINGS,
 
       setUserName: (userName) => set({ userName }),
+      setAiEnabled: (aiEnabled) => set({ aiEnabled }),
       setOllamaModel: (ollamaModel) => set({ ollamaModel }),
       setOllamaUrl: (ollamaUrl) => set({ ollamaUrl }),
       setEmbeddingModel: (embeddingModel) => set({ embeddingModel }),
-      setGitRepoPath: (gitRepoPath) => set({ gitRepoPath }),
-      setGitAutoSync: (gitAutoSync) => set({ gitAutoSync }),
 
       completeOnboarding: () => set({ hasCompletedOnboarding: true }),
 
@@ -60,6 +54,17 @@ export const useSettingsStore = create<SettingsState>()(
         set({ ...DEFAULT_SETTINGS });
       },
     }),
-    { name: "stem-settings" }
+    {
+      name: "stem-settings",
+      version: 1,
+      migrate: (persisted, version) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const state = persisted as any;
+        if (version === 0 && state?.ollamaModel && !state.ollamaModel.includes(":")) {
+          state.ollamaModel = `${state.ollamaModel}:latest`;
+        }
+        return state;
+      },
+    }
   )
 );

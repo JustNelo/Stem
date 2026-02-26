@@ -1,13 +1,11 @@
 import { motion } from "framer-motion";
-import { useSettingsStore } from "@/store/useSettingsStore";
+import { Sparkles, Shield, Search } from "lucide-react";
 
 interface SummaryStepProps {
   name: string;
 }
 
 export function SummaryStep({ name }: SummaryStepProps) {
-  const ollamaModel = useSettingsStore((s) => s.ollamaModel);
-
   return (
     <div className="flex h-full flex-col justify-center">
       <motion.div
@@ -16,10 +14,10 @@ export function SummaryStep({ name }: SummaryStepProps) {
         transition={{ delay: 0.1 }}
       >
         <h1 className="text-4xl font-bold tracking-tight text-text">
-          Tout est prêt{name ? `, ${name}` : ""} !
+          C'est parti{name ? `, ${name}` : ""} !
         </h1>
         <p className="mt-3 text-text-secondary">
-          Votre espace de notes intelligent est configuré.
+          Votre espace de notes est prêt. Voici ce que vous pouvez faire :
         </p>
       </motion.div>
 
@@ -27,47 +25,50 @@ export function SummaryStep({ name }: SummaryStepProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="mt-8 space-y-4"
+        className="mt-8 space-y-3"
       >
-        <div className="rounded-xl border border-border bg-surface-elevated p-5">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                IA locale
-              </span>
-              <span className="text-sm font-medium text-text">
-                Ollama ({ollamaModel})
-              </span>
-            </div>
+        <FeatureCard
+          icon={<Sparkles size={16} />}
+          title="Un assistant à portée de main"
+          description="Résumez, corrigez ou explorez vos notes grâce à l'IA intégrée."
+        />
+        <FeatureCard
+          icon={<Search size={16} />}
+          title="Retrouvez tout, instantanément"
+          description="Recherchez vos notes par mots-clés ou par sens, même si vous ne vous souvenez plus du titre."
+        />
+        <FeatureCard
+          icon={<Shield size={16} />}
+          title="Vos données restent chez vous"
+          description="Tout est stocké localement sur votre machine. Rien n'est envoyé en ligne."
+        />
 
-            <div className="h-px bg-border" />
-
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                Recherche sémantique
-              </span>
-              <span className="text-sm font-medium text-text">
-                nomic-embed-text
-              </span>
-            </div>
-
-            <div className="h-px bg-border" />
-
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-                Stockage
-              </span>
-              <span className="text-sm font-medium text-text">
-                SQLite local
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <p className="text-center text-xs text-text-muted">
-          Modifiable à tout moment dans les paramètres
+        <p className="pt-2 text-center text-[11px] text-text-muted">
+          Vous pouvez ajuster tout cela dans les paramètres à tout moment.
         </p>
       </motion.div>
+    </div>
+  );
+}
+
+function FeatureCard({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-border-metallic bg-surface-elevated p-4">
+      <div className="btn-sculpted flex h-8 w-8 shrink-0 items-center justify-center text-text-secondary">
+        {icon}
+      </div>
+      <div>
+        <p className="text-sm font-medium text-text">{title}</p>
+        <p className="mt-0.5 text-[12px] text-text-muted">{description}</p>
+      </div>
     </div>
   );
 }
