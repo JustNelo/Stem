@@ -28,14 +28,14 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc4OUY3MTlFMjk2QUFFRDMKUldUVHJtb3BubkdmZUlkdXNQUTBmQnF5Y1VZUXhVUEVrc2JtYU1FQk02aThQSmd4ZXB5UXo5dysK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdDMzVBNkVERUUzRjc4Q0EKUldUS2VEL3U3YVkxZkVTdU5jUnRxVnhNa2U4WGZ2d3RSZ2NMSDk1anpaYlREc29aN295dW9oVkMK",
       "endpoints": [
         "https://github.com/JustNelo/Stem/releases/latest/download/latest.json"
       ]
     }
   },
   "bundle": {
-    "createUpdaterArtifacts": "v1Compatible",
+    "createUpdaterArtifacts": true,
     "active": true,
     "targets": ["nsis", "deb", "appimage"],
     "icon": [
