@@ -20,6 +20,7 @@ jobs:
             args: ""
 
     runs-on: ${{ matrix.platform }}
+    environment: Tauri
 
     steps:
       - name: Checkout
