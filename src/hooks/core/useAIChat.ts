@@ -1,8 +1,45 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useNotesStore } from "@/store/useNotesStore";
+import { useToastStore } from "@/store/useToastStore";
 import { AIChatService, type ChatTurn } from "@/services/ai-chat";
+import type { StoreCallbacks } from "@/services/ai-tools-dispatcher";
 import { extractPlainText } from "@/lib/utils/text";
+
+interface StreamChunk {
+  token: string;
+  done: boolean;
+}
+
+/**
+ * Streams a single response from Ollama via the ollama_chat_stream Tauri command.
+ * Calls onToken for each incremental token and resolves with the full text on done.
+ */
+async function streamOllamaResponse(
+  messages: Array<{ role: string; content: string }>,
+  model: string,
+  ollamaUrl: string,
+  onToken: (token: string) => void,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let accumulated = "";
+    const channel = new Channel<StreamChunk>();
+
+    channel.onmessage = (chunk) => {
+      if (chunk.done) {
+        resolve(accumulated);
+        return;
+      }
+      accumulated += chunk.token;
+      onToken(chunk.token);
+    };
+
+    invoke("ollama_chat_stream", { messages, model, ollamaUrl, channel }).catch(
+      (err) => reject(err),
+    );
+  });
+}
 
 interface Command {
   name: string;
@@ -30,6 +67,47 @@ export interface Message {
   timestamp: Date;
 }
 
+const STORAGE_KEY = "stem_chat_messages";
+const HISTORY_STORAGE_KEY = "stem_chat_history";
+const MAX_PERSISTED_MESSAGES = 100;
+
+function loadMessages(): Message[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Array<Message & { timestamp: string }>;
+    return parsed.map((m) => ({ ...m, timestamp: new Date(m.timestamp) }));
+  } catch {
+    return [];
+  }
+}
+
+function saveMessages(messages: Message[]): void {
+  try {
+    const bounded = messages.slice(-MAX_PERSISTED_MESSAGES);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(bounded));
+  } catch {
+    // Storage full or unavailable — fail silently
+  }
+}
+
+function loadHistory(): ChatTurn[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as ChatTurn[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(history: ChatTurn[]): void {
+  try {
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
+  } catch {
+    // fail silently
+  }
+}
+
 interface UseAIChatOptions {
   onExecuteCommand: (command: string, args?: string) => Promise<string>;
   isProcessing: boolean;
@@ -38,18 +116,39 @@ interface UseAIChatOptions {
 
 export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatOptions) {
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => loadMessages());
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const [localProcessing, setLocalProcessing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const historyRef = useRef<ChatTurn[]>([]);
+  const historyRef = useRef<ChatTurn[]>(loadHistory());
 
   const ollamaUrl = useSettingsStore((s) => s.ollamaUrl);
   const ollamaModel = useSettingsStore((s) => s.ollamaModel);
   const selectedNote = useNotesStore((s) => s.selectedNote);
+  const { fetchNotes, selectNote } = useNotesStore();
+  const addToast = useToastStore((s) => s.addToast);
 
   const isCurrentlyProcessing = isProcessing || localProcessing;
+
+  const storeCallbacks = useMemo<StoreCallbacks>(
+    () => ({
+      onNoteCreated: (note) => {
+        fetchNotes();
+        selectNote(note);
+        addToast(`Note "${note.title}" créée par l'IA`, "success");
+      },
+      onNoteUpdated: (note) => {
+        fetchNotes();
+        addToast(`Note "${note.title}" mise à jour par l'IA`, "info");
+      },
+      onNoteDeleted: () => {
+        fetchNotes();
+        addToast("Note supprimée par l'IA", "info");
+      },
+    }),
+    [fetchNotes, selectNote, addToast],
+  );
 
   const filteredCommands = useMemo(
     () =>
@@ -63,6 +162,7 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    saveMessages(messages);
   }, [messages]);
 
   const showCommands = input.startsWith("/") && !input.includes(" ");
@@ -83,6 +183,12 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
     return fullMsg;
   }, []);
 
+  const updateMessageContent = useCallback((id: string, token: string) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, content: m.content + token } : m)),
+    );
+  }, []);
+
   const executeSlashCommand = useCallback(
     async (commandName: string, args?: string) => {
       const command = COMMANDS.find((c) => c.name === commandName);
@@ -100,17 +206,16 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
 
           const userText = args || "Montre-moi mes notes.";
 
-          const onToolCall = (toolName: string) => {
-            addMessage({ type: "tool_call", content: toolName });
-          };
-
           const result = await AIChatService.chat(
             userText,
             historyRef.current,
             ollamaModel,
             ollamaUrl,
             noteContext,
-            onToolCall,
+            {
+              storeCallbacks,
+              onToolCall: (toolName) => addMessage({ type: "tool_call", content: toolName }),
+            },
           );
 
           historyRef.current = [
@@ -118,11 +223,27 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
             { role: "user", content: userText },
             { role: "assistant", content: result },
           ];
+          saveHistory(historyRef.current);
 
           addMessage({ type: "assistant", content: result, command: commandName });
         } else {
-          const result = await onExecuteCommand(command.action, args);
-          addMessage({ type: "assistant", content: result, command: commandName });
+          // Non-MCP slash commands use streaming for real-time token delivery
+          const prompt = await onExecuteCommand(command.action, args);
+          const streamingMsg = addMessage({ type: "assistant", content: "", command: commandName });
+          const systemMessages = [
+            {
+              role: "system",
+              content:
+                "Tu es un assistant intelligent. Réponds TOUJOURS en français sauf si l'utilisateur demande explicitement une autre langue. Utilise un style clair, structuré et pédagogique.",
+            },
+            { role: "user", content: prompt },
+          ];
+          await streamOllamaResponse(
+            systemMessages,
+            ollamaModel,
+            ollamaUrl,
+            (token) => updateMessageContent(streamingMsg.id, token),
+          );
         }
       } catch (error) {
         addMessage({ type: "error", content: `Erreur: ${error}` });
@@ -130,7 +251,7 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
         setLocalProcessing(false);
       }
     },
-    [addMessage, onExecuteCommand, selectedNote, ollamaModel, ollamaUrl],
+    [addMessage, updateMessageContent, onExecuteCommand, selectedNote, ollamaModel, ollamaUrl, storeCallbacks],
   );
 
   const sendFreeMessage = useCallback(
@@ -144,17 +265,16 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
           ? extractPlainText(selectedNote.content)
           : null;
 
-        const onToolCall = (toolName: string) => {
-          addMessage({ type: "tool_call", content: toolName });
-        };
-
         const result = await AIChatService.chat(
           text,
           historyRef.current,
           ollamaModel,
           ollamaUrl,
           noteContext,
-          onToolCall,
+          {
+            storeCallbacks,
+            onToolCall: (toolName) => addMessage({ type: "tool_call", content: toolName }),
+          },
         );
 
         historyRef.current = [
@@ -162,6 +282,7 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
           { role: "user", content: text },
           { role: "assistant", content: result },
         ];
+        saveHistory(historyRef.current);
 
         addMessage({ type: "assistant", content: result });
       } catch (error) {
@@ -193,6 +314,8 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
   const clearConversation = useCallback(() => {
     setMessages([]);
     historyRef.current = [];
+    saveMessages([]);
+    saveHistory([]);
   }, []);
 
   const handleKeyDown = useCallback(

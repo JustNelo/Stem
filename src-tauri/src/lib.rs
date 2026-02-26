@@ -11,7 +11,7 @@ use commands::{
 use db::Database;
 use embeddings::{generate_embedding, search_similar_notes, delete_embedding};
 use git::{git_status, git_init, git_pull, git_sync};
-use ollama::{summarize_note, check_ollama_connection, get_ollama_models, ollama_chat};
+use ollama::{summarize_note, check_ollama_connection, get_ollama_models, ollama_chat, ollama_chat_stream};
 use tauri::{Manager, Emitter};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
@@ -89,6 +89,7 @@ pub fn run() {
             check_ollama_connection,
             get_ollama_models,
             ollama_chat,
+            ollama_chat_stream,
             export_all_data,
             import_all_data,
             generate_embedding,
