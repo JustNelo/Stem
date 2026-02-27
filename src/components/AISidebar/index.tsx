@@ -95,7 +95,7 @@ export function AISidebar({
         opacity: isOpen ? 1 : 0,
       }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="relative z-20 flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-surface-deep panel-acrylic pt-8"
+      className="relative z-20 flex h-full shrink-0 flex-col overflow-hidden border-l border-white/6 bg-surface-deep panel-acrylic pt-8"
     >
       {/* Resize handle */}
       <div

@@ -118,7 +118,7 @@ export function NotesSidebar({
         opacity: isOpen ? 1 : 0,
       }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="relative z-20 flex h-full shrink-0 flex-col overflow-hidden border-r border-border bg-surface-deep panel-acrylic"
+      className="relative z-20 flex h-full shrink-0 flex-col overflow-hidden border-r border-white/6 bg-surface-deep panel-acrylic"
     >
       <div style={{ width: SIDEBAR_WIDTH }} className="flex h-full flex-col pt-8">
         {/* Sidebar header */}

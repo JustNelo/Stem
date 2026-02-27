@@ -81,13 +81,13 @@ export function Layout({
       )}
 
       {/* CENTER COLUMN — Editor */}
-      <main className="relative z-10 flex flex-1 flex-col overflow-hidden pt-8">
+      <main className="relative z-10 flex flex-1 flex-col overflow-hidden bg-surface pt-8">
         <div className="flex flex-1 overflow-y-auto">
           <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-8 py-6">{children}</div>
         </div>
         {/* Status bar */}
         {selectedNote && (
-          <div className="flex w-full shrink-0 justify-end border-t border-border-metallic/30 px-4 py-1.5">
+          <div className="flex w-full shrink-0 justify-end border-t border-white/5 px-4 py-1.5">
             <StatusBar saveStatus={saveStatus} wordCount={wordCount} />
           </div>
         )}

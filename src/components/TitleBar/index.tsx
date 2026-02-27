@@ -50,7 +50,7 @@ export function TitleBar({ onOpenSettings }: TitleBarProps) {
   return (
     <div
       onMouseDown={handleDrag}
-      className="fixed left-0 right-0 top-0 z-50 flex h-8 cursor-default items-center justify-between bg-surface-deep border-b border-border-metallic/30"
+      className="fixed left-0 right-0 top-0 z-50 flex h-8 cursor-default items-center justify-between bg-surface-inset border-b border-white/6"
     >
       {/* Left side — draggable area */}
       <div
