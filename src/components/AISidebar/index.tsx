@@ -2,27 +2,12 @@ import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Trash2, ChevronRight, Send, FileText, Globe, PenLine,
-  Lightbulb, Brain, MessageCircle, Sparkles, Copy, Check, Square,
-  Plus, Eye, Search, Pencil, FilePlus, Minus,
+  Lightbulb, Brain, MessageCircle, Sparkles, Square,
 } from "lucide-react";
 import { IconButton } from "@/components/ui/IconButton";
-import Markdown from "react-markdown";
-import rehypeSanitize from "rehype-sanitize";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useAIChat } from "@/hooks/core/useAIChat";
-
-// Strip all background colors from the theme to avoid the "highlighted" effect
-const cleanTheme = Object.fromEntries(
-  Object.entries(oneDark).map(([key, value]) => {
-    if (typeof value === "object" && value !== null) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { background, backgroundColor, ...rest } = value as Record<string, string>;
-      return [key, rest];
-    }
-    return [key, value];
-  }),
-);
+import { AssistantMessage } from "./components/AssistantMessage";
+import { ToolCallBadge } from "./components/ToolCallBadge";
 
 // Icon mapping for commands
 const COMMAND_ICONS: Record<string, React.ReactNode> = {
@@ -110,7 +95,7 @@ export function AISidebar({
         opacity: isOpen ? 1 : 0,
       }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="relative z-20 flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-surface-deep panel-acrylic pt-8"
+      className="relative z-20 flex h-full shrink-0 flex-col overflow-hidden border-l border-white/6 bg-surface-deep panel-acrylic pt-8"
     >
       {/* Resize handle */}
       <div
@@ -279,109 +264,3 @@ export function AISidebar({
   );
 }
 
-function CodeBlock({ code, language }: { code: string; language: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-
-  return (
-    <div className="my-2 overflow-hidden rounded-xl border border-border-metallic shadow-[inset_0_1px_0_0_rgba(255,255,255,0.02),0_2px_8px_rgba(0,0,0,0.2)]">
-      <div className="flex items-center justify-between border-b border-border bg-surface-hover/40 px-3 py-1.5">
-        <span className="font-mono text-[10px] font-medium lowercase tracking-wide text-text-muted">
-          {language}
-        </span>
-        <button
-          onClick={handleCopy}
-          className="btn-sculpted flex h-5 w-5 cursor-pointer items-center justify-center text-text-ghost transition-colors hover:text-text-muted"
-          title="Copier le code"
-        >
-          {copied ? <Check size={9} /> : <Copy size={9} />}
-        </button>
-      </div>
-      <SyntaxHighlighter
-        style={cleanTheme}
-        language={language}
-        PreTag="div"
-        customStyle={{
-          margin: 0,
-          padding: "12px 14px",
-          fontSize: "12px",
-          lineHeight: "1.7",
-          background: "transparent",
-          backgroundColor: "var(--color-surface-deep)",
-          overflowX: "auto",
-        }}
-      >
-        {code}
-      </SyntaxHighlighter>
-    </div>
-  );
-}
-
-const TOOL_META: Record<string, { label: string; icon: React.ReactNode }> = {
-  list_notes: { label: "Lecture des notes", icon: <Eye size={10} /> },
-  read_note: { label: "Lecture d'une note", icon: <Eye size={10} /> },
-  create_note: { label: "Création d'une note", icon: <Plus size={10} /> },
-  update_note: { label: "Mise à jour d'une note", icon: <Pencil size={10} /> },
-  delete_note: { label: "Suppression d'une note", icon: <Minus size={10} /> },
-  append_to_note: { label: "Ajout de contenu", icon: <FilePlus size={10} /> },
-  search_notes: { label: "Recherche", icon: <Search size={10} /> },
-};
-
-function ToolCallBadge({ toolName }: { toolName: string }) {
-  const meta = TOOL_META[toolName];
-  return (
-    <div className="flex items-center gap-1.5 py-0.5">
-      <span className="text-text-ghost">{meta?.icon ?? <Brain size={10} />}</span>
-      <span className="text-[11px] text-text-ghost">
-        {meta?.label ?? toolName}
-      </span>
-    </div>
-  );
-}
-
-function AssistantMessage({ content, command }: { content: string; command?: string }) {
-  return (
-    <div>
-      {command && (
-        <div className="mb-1 flex items-center gap-1.5">
-          <Sparkles size={9} className="text-text-ghost" />
-          <span className="text-[10px] text-text-ghost">{command}</span>
-        </div>
-      )}
-      <div className="ai-markdown text-[13px] leading-[1.6] text-text-secondary [&_h1]:mb-1.5 [&_h1]:mt-3 [&_h1]:text-[14px] [&_h1]:font-semibold [&_h1]:text-text [&_h2]:mb-1 [&_h2]:mt-2.5 [&_h2]:text-[13px] [&_h2]:font-semibold [&_h2]:text-text [&_h3]:mb-1 [&_h3]:mt-2 [&_h3]:text-[13px] [&_h3]:font-medium [&_h3]:text-text [&_li]:mb-0.5 [&_li]:text-[13px] [&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-4 [&_p]:my-1 [&_strong]:font-semibold [&_strong]:text-text [&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-4">
-        <Markdown
-          rehypePlugins={[rehypeSanitize]}
-          components={{
-            code({ className, children, ...props }) {
-              const match = /language-(\w+)/.exec(className || "");
-              const codeStr = String(children).replace(/\n$/, "");
-
-              if (match) {
-                return <CodeBlock code={codeStr} language={match[1]} />;
-              }
-
-              return (
-                <code
-                  className="rounded bg-surface-hover/80 px-1 py-0.5 font-mono text-[12px] text-text-secondary"
-                  {...props}
-                >
-                  {children}
-                </code>
-              );
-            },
-            pre({ children }) {
-              return <>{children}</>;
-            },
-          }}
-        >
-          {content}
-        </Markdown>
-      </div>
-    </div>
-  );
-}

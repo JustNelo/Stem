@@ -3,9 +3,11 @@ import { safeInvoke } from "@/lib/tauri";
 import { OllamaModelsSchema } from "@/types/schemas";
 import { extractPlainText } from "@/lib/utils/text";
 import { buildAIPrompt } from "@/lib/ai-prompts";
+import { ChatResultSchema, type ChatMessage } from "@/services/ai-chat";
 
 /**
  * AI service — single abstraction over Ollama IPC calls.
+ * Uses ollama_chat (no tools) for simple prompt execution.
  */
 export const AIService = {
   /**
@@ -28,14 +30,7 @@ export const AIService = {
     }
 
     const prompt = buildAIPrompt(command, text, args);
-
-    const result = await safeInvoke("summarize_note", z.string(), {
-      content: prompt,
-      model,
-      ollamaUrl,
-    });
-
-    return result || "Résultat vide.";
+    return AIService.executeRawPrompt(prompt, model, ollamaUrl);
   },
 
   /**
@@ -46,12 +41,22 @@ export const AIService = {
     model: string,
     ollamaUrl: string,
   ): Promise<string> {
-    const result = await safeInvoke("summarize_note", z.string(), {
-      content: prompt,
+    const messages: ChatMessage[] = [
+      {
+        role: "system",
+        content: "Tu es un assistant intelligent. Réponds TOUJOURS en français sauf si l'utilisateur demande explicitement une autre langue. Utilise un style clair, structuré et pédagogique.",
+      },
+      { role: "user", content: prompt },
+    ];
+
+    const result = await safeInvoke("ollama_chat", ChatResultSchema, {
+      messages,
       model,
       ollamaUrl,
+      tools: null,
     });
-    return result || "Résultat vide.";
+
+    return result.content?.trim() || "Résultat vide.";
   },
 
   /**

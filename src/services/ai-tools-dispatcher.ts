@@ -2,7 +2,6 @@ import { safeInvoke } from "@/lib/tauri";
 import { NoteRepository } from "@/services/db";
 import { NoteArraySchema } from "@/types/schemas";
 import { extractPlainText } from "@/lib/utils/text";
-import { markdownToBlockNoteJson, parseBlockNoteContent } from "@/lib/utils/markdown-to-blocknote";
 import type { Note } from "@/types";
 import type { AIToolCall, AIToolResult } from "@/lib/ai-tools";
 
@@ -60,8 +59,7 @@ async function executeToolCall(
     case "create_note": {
       const { title, content } = call.arguments as { title: string; content?: string };
       if (!title) throw new Error("title est requis");
-      const blockNoteContent = content ? markdownToBlockNoteJson(content) : null;
-      const note = await NoteRepository.create(title, blockNoteContent);
+      const note = await NoteRepository.create(title, content ?? null);
       callbacks?.onNoteCreated(note);
       return `Note créée avec succès. ID: ${note.id}, Titre: "${note.title}"`;
     }
@@ -76,7 +74,7 @@ async function executeToolCall(
       if (!title && !content) throw new Error("Au moins title ou content est requis");
       const updates: { title?: string; content?: string } = {};
       if (title) updates.title = title;
-      if (content) updates.content = markdownToBlockNoteJson(content);
+      if (content) updates.content = content;
       const updated = await NoteRepository.update(note_id, updates);
       callbacks?.onNoteUpdated(updated);
       return `Note "${updated.title}" mise à jour avec succès.`;
@@ -88,20 +86,6 @@ async function executeToolCall(
       await NoteRepository.delete(note_id);
       callbacks?.onNoteDeleted(note_id);
       return `Note supprimée avec succès.`;
-    }
-
-    case "append_to_note": {
-      const { note_id, content } = call.arguments as { note_id: string; content: string };
-      if (!note_id) throw new Error("note_id est requis");
-      if (!content) throw new Error("content est requis");
-      const existingNote = await NoteRepository.getById(note_id);
-      if (!existingNote) return `Aucune note trouvée avec l'ID "${note_id}".`;
-      const existingBlocks = parseBlockNoteContent(existingNote.content);
-      const newBlocks = JSON.parse(markdownToBlockNoteJson(content));
-      const merged = JSON.stringify([...existingBlocks, ...newBlocks]);
-      const appended = await NoteRepository.update(note_id, { content: merged });
-      callbacks?.onNoteUpdated(appended);
-      return `Contenu ajouté à la note "${appended.title}" avec succès.`;
     }
 
     case "search_notes": {

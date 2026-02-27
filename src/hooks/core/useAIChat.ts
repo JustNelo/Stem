@@ -2,75 +2,23 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useNotesStore } from "@/store/useNotesStore";
 import { useToastStore } from "@/store/useToastStore";
-import { AIChatService, type ChatTurn } from "@/services/ai-chat";
+import { AIChatService, type ChatTurn, type NoteContext } from "@/services/ai-chat";
 import type { StoreCallbacks } from "@/services/ai-tools-dispatcher";
 import { extractPlainText } from "@/lib/utils/text";
-
-interface Command {
-  name: string;
-  description: string;
-  action: string;
-}
-
-const COMMANDS: Command[] = [
-  { name: "resume", description: "Résumer la note", action: "summarize" },
-  { name: "traduire", description: "Traduire en anglais", action: "translate" },
-  { name: "corriger", description: "Corriger l'orthographe", action: "correct" },
-  { name: "expliquer", description: "Expliquer simplement", action: "explain" },
-  { name: "idees", description: "Générer des idées", action: "ideas" },
-];
+import {
+  COMMANDS,
+  loadMessagesAsync,
+  saveMessage,
+  updatePersistedMessage,
+  loadHistory,
+  saveHistory,
+  clearStorage,
+  type Message,
+  type Command,
+} from "./useAIChatPersistence";
 
 export { COMMANDS };
-export type { Command };
-
-export interface Message {
-  id: string;
-  type: "user" | "assistant" | "error" | "tool_call";
-  content: string;
-  command?: string;
-  timestamp: Date;
-}
-
-const STORAGE_KEY = "stem_chat_messages";
-const HISTORY_STORAGE_KEY = "stem_chat_history";
-const MAX_PERSISTED_MESSAGES = 100;
-
-function loadMessages(): Message[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as Array<Message & { timestamp: string }>;
-    return parsed.map((m) => ({ ...m, timestamp: new Date(m.timestamp) }));
-  } catch {
-    return [];
-  }
-}
-
-function saveMessages(messages: Message[]): void {
-  try {
-    const bounded = messages.slice(-MAX_PERSISTED_MESSAGES);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(bounded));
-  } catch {
-    // Storage full or unavailable — fail silently
-  }
-}
-
-function loadHistory(): ChatTurn[] {
-  try {
-    const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as ChatTurn[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveHistory(history: ChatTurn[]): void {
-  try {
-    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
-  } catch {
-    // fail silently
-  }
-}
+export type { Command, Message };
 
 interface UseAIChatOptions {
   onExecuteCommand: (command: string, args?: string) => Promise<string>;
@@ -80,13 +28,23 @@ interface UseAIChatOptions {
 
 export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatOptions) {
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>(() => loadMessages());
+  const [messages, setMessages] = useState<Message[]>([]);
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const [localProcessing, setLocalProcessing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<ChatTurn[]>(loadHistory());
   const abortRef = useRef<AbortController | null>(null);
+  const loadedRef = useRef(false);
+
+  // Load messages from SQLite on first mount
+  useEffect(() => {
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+    loadMessagesAsync().then((msgs) => {
+      if (msgs.length > 0) setMessages(msgs);
+    });
+  }, []);
 
   const ollamaUrl = useSettingsStore((s) => s.ollamaUrl);
   const ollamaModel = useSettingsStore((s) => s.ollamaModel);
@@ -105,6 +63,7 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
       },
       onNoteUpdated: (note) => {
         fetchNotes();
+        selectNote(note);
         addToast(`Note "${note.title}" mise à jour par l'IA`, "info");
       },
       onNoteDeleted: () => {
@@ -127,7 +86,6 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    saveMessages(messages);
   }, [messages]);
 
   const showCommands = input.startsWith("/") && !input.includes(" ");
@@ -145,6 +103,7 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
   const addMessage = useCallback((msg: Omit<Message, "id" | "timestamp">) => {
     const fullMsg: Message = { ...msg, id: crypto.randomUUID(), timestamp: new Date() };
     setMessages((prev) => [...prev, fullMsg]);
+    saveMessage(fullMsg);
     return fullMsg;
   }, []);
 
@@ -175,9 +134,12 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
             },
             { role: "user", content: prompt },
           ];
+          let slashFullText = "";
           for await (const token of AIChatService.stream(streamMessages, ollamaModel, ollamaUrl)) {
+            slashFullText += token;
             updateMessageContent(streamingMsg.id, token);
           }
+          updatePersistedMessage(streamingMsg.id, slashFullText, streamingMsg.timestamp, "assistant", commandName);
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
         addMessage({ type: "error", content: msg });
@@ -198,8 +160,12 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
       abortRef.current = controller;
 
       try {
-        const noteContext = selectedNote
-          ? extractPlainText(selectedNote.content)
+        const noteContext: NoteContext | null = selectedNote
+          ? {
+              id: selectedNote.id,
+              title: selectedNote.title,
+              contentPreview: extractPlainText(selectedNote.content),
+            }
           : null;
 
         const streamingMsg = addMessage({ type: "assistant", content: "" });
@@ -227,6 +193,7 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
             prev.map((m) => (m.id === streamingMsg.id ? { ...m, content: finalText } : m)),
           );
         }
+        updatePersistedMessage(streamingMsg.id, finalText, streamingMsg.timestamp, "assistant");
 
         historyRef.current = [
           ...historyRef.current,
@@ -273,8 +240,7 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
   const clearConversation = useCallback(() => {
     setMessages([]);
     historyRef.current = [];
-    saveMessages([]);
-    saveHistory([]);
+    clearStorage();
   }, []);
 
   const handleKeyDown = useCallback(

@@ -29,3 +29,6 @@ Ta mission est de produire un code maintenable, sécurisé, et de haute qualité
 - Avant d'écrire du code complexe, explique brièvement ton approche et comment elle respecte les principes SOLID/DRY.
 - Fournis toujours des imports corrects et à jour.
 - Commente le code uniquement pour expliquer le "Pourquoi" (logique métier complexe), et non le "Comment" (le code doit être auto-descriptif).
+
+# Git
+- A chaque fin d'implémentation d'une fonctionnalité, ajoute un commit avec un message descriptif.

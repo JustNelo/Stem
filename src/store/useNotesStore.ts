@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { NoteRepository } from "@/services/db";
+import { EmbeddingService } from "@/services/embeddings";
 import type { Note } from "@/types";
 
 const toast = (msg: string, type: "success" | "error" | "info" = "success") => {
@@ -76,6 +77,7 @@ export const useNotesStore = create<NotesState>((set) => ({
   deleteNote: async (id) => {
     try {
       await NoteRepository.delete(id);
+      EmbeddingService.deleteForNote(id).catch(() => {});
       set((state) => {
         const remainingNotes = state.notes.filter((note) => note.id !== id);
         const wasSelected = state.selectedNote?.id === id;

@@ -1,9 +1,5 @@
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
-@import "@fontsource/inter/300.css";
-@import "@fontsource/inter/400.css";
-@import "@fontsource/inter/500.css";
-@import "@fontsource/inter/700.css";
 @import "@fontsource/jetbrains-mono/400.css";
 @import "@fontsource/jetbrains-mono/500.css";
 @import "@fontsource/jetbrains-mono/700.css";
@@ -91,34 +87,35 @@
 
 @theme {
   /* ═══════════════════════════════════════════
-     STEM — Deep Obsidian Metallic
-     Inspired by brushed dark metal & obsidian
+     STEM — Refined Zinc Dark
+     Notion/Linear-inspired premium dark palette
      ═══════════════════════════════════════════ */
 
-  /* Surfaces — obsidian depth progression */
-  --color-surface: #0e0e10;
-  --color-surface-elevated: #161618;
-  --color-surface-hover: #222226;
-  --color-surface-deep: #0a0a0c;
+  /* Surfaces — zinc depth progression (softer than pure black) */
+  --color-surface: #18181b;          /* zinc-900 — main editor area */
+  --color-surface-elevated: #1f1f23; /* slightly lifted panels */
+  --color-surface-hover: #27272a;    /* zinc-800 — hover states */
+  --color-surface-deep: #111113;     /* sidebar panels */
+  --color-surface-inset: #0f0f12;    /* deepest inset (titlebar) */
 
-  /* Borders — metallic edges */
-  --color-border: #1e1e22;
-  --color-border-subtle: #2a2a30;
-  --color-border-metallic: #3a3a42;
+  /* Borders — soft separators */
+  --color-border: #27272a;           /* zinc-800 — primary border */
+  --color-border-subtle: #303036;    /* slightly visible */
+  --color-border-metallic: #3f3f46;  /* zinc-700 — emphasized */
 
-  /* Text — silver hierarchy */
-  --color-text: #d8d8dc;
-  --color-text-secondary: #9a9aa0;
-  --color-text-muted: #5c5c64;
-  --color-text-ghost: #32323a;
+  /* Text — warm silver hierarchy */
+  --color-text: #e4e4e7;             /* zinc-200 */
+  --color-text-secondary: #a1a1aa;   /* zinc-400 */
+  --color-text-muted: #71717a;       /* zinc-500 */
+  --color-text-ghost: #3f3f46;       /* zinc-700 */
 
-  /* Accent — brushed silver */
-  --color-accent: #b8b8c0;
+  /* Accent — cool silver-blue */
+  --color-accent: #d4d4d8;           /* zinc-300 */
 
   /* Metallic highlights */
-  --color-metallic-shine: rgba(200, 200, 210, 0.08);
-  --color-metallic-glow: rgba(180, 180, 195, 0.06);
-  --color-metallic-edge: rgba(255, 255, 255, 0.04);
+  --color-metallic-shine: rgba(228, 228, 231, 0.07);
+  --color-metallic-glow: rgba(212, 212, 216, 0.05);
+  --color-metallic-edge: rgba(255, 255, 255, 0.06);
 
   /* Spellcheck / errors — deep copper-bordeaux */
   --color-spellcheck: #6b3a3a;
@@ -280,8 +277,8 @@ body {
 .panel-acrylic {
   background: linear-gradient(
     180deg,
-    rgba(14, 14, 16, 0.95) 0%,
-    rgba(10, 10, 12, 0.98) 100%
+    rgba(17, 17, 19, 0.97) 0%,
+    rgba(15, 15, 18, 0.99) 100%
   );
   backdrop-filter: blur(20px) saturate(120%);
 }

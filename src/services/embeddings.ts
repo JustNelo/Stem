@@ -10,7 +10,7 @@ import type { SemanticResult } from "@/types";
 export const EmbeddingService = {
   /**
    * Generate and store an embedding for a note.
-   * Extracts plain text from BlockNote JSON content before sending.
+   * Extracts plain text from note content before sending.
    */
   async generateForNote(
     noteId: string,
