@@ -1,19 +1,7 @@
 use crate::error::StemError;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tauri::State;
-
-#[derive(Serialize)]
-struct OllamaRequest {
-    model: String,
-    prompt: String,
-    system: String,
-    stream: bool,
-}
-
-#[derive(Deserialize)]
-struct OllamaResponse {
-    response: String,
-}
 
 #[derive(Deserialize)]
 struct OllamaModelInfo {
@@ -25,12 +13,28 @@ struct OllamaModelsResponse {
     models: Vec<OllamaModelInfo>,
 }
 
-// --- /api/chat types ---
+// --- /api/chat types (native tool calling) ---
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub(crate) struct ChatMessage {
-    role: String,
-    content: String,
+    pub role: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<ToolCall>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub(crate) struct ToolCall {
+    pub function: ToolCallFunction,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub(crate) struct ToolCallFunction {
+    pub name: String,
+    pub arguments: Value,
 }
 
 #[derive(Serialize)]
@@ -40,6 +44,8 @@ struct OllamaChatRequest {
     stream: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     options: Option<OllamaChatOptions>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tools: Option<Vec<Value>>,
 }
 
 #[derive(Serialize)]
@@ -53,13 +59,27 @@ struct OllamaChatResponse {
     message: ChatMessage,
 }
 
+/// Response returned to the frontend — either text content or structured tool calls.
+#[derive(Serialize, Debug)]
+pub struct ChatResult {
+    pub content: Option<String>,
+    pub tool_calls: Option<Vec<ChatResultToolCall>>,
+}
+
+#[derive(Serialize, Debug)]
+pub struct ChatResultToolCall {
+    pub name: String,
+    pub arguments: Value,
+}
+
 #[tauri::command]
 pub async fn ollama_chat(
     client: State<'_, reqwest::Client>,
     messages: Vec<ChatMessage>,
     model: String,
     ollama_url: String,
-) -> Result<String, StemError> {
+    tools: Option<Vec<Value>>,
+) -> Result<ChatResult, StemError> {
     let base_url = if ollama_url.is_empty() {
         "http://localhost:11434".to_string()
     } else {
@@ -74,6 +94,7 @@ pub async fn ollama_chat(
             temperature: 0.4,
             num_ctx: 32768,
         }),
+        tools,
     };
 
     let response = client
@@ -94,50 +115,30 @@ pub async fn ollama_chat(
         .await
         .map_err(|e| StemError::Ollama(format!("Erreur parsing réponse Ollama: {}", e)))?;
 
-    Ok(chat_response.message.content.trim().to_string())
-}
+    let msg = chat_response.message;
 
-
-#[tauri::command]
-pub async fn summarize_note(
-    client: State<'_, reqwest::Client>,
-    content: String,
-    model: Option<String>,
-    ollama_url: Option<String>,
-) -> Result<String, StemError> {
-    if content.trim().is_empty() {
-        return Ok(String::new());
+    // If the model returned tool_calls, forward them structured
+    if let Some(ref calls) = msg.tool_calls {
+        if !calls.is_empty() {
+            let result_calls: Vec<ChatResultToolCall> = calls
+                .iter()
+                .map(|tc| ChatResultToolCall {
+                    name: tc.function.name.clone(),
+                    arguments: tc.function.arguments.clone(),
+                })
+                .collect();
+            return Ok(ChatResult {
+                content: msg.content.clone(),
+                tool_calls: Some(result_calls),
+            });
+        }
     }
 
-    let model = model.unwrap_or_else(|| "mistral".to_string());
-    let base_url = ollama_url.unwrap_or_else(|| "http://localhost:11434".to_string());
-
-    let request = OllamaRequest {
-        model,
-        prompt: content,
-        system: "Tu es un assistant intelligent. Réponds TOUJOURS en français, sauf si l'utilisateur demande explicitement une autre langue. Utilise un style clair, structuré et pédagogique.".to_string(),
-        stream: false,
-    };
-
-    let response = client
-        .post(format!("{}/api/generate", base_url))
-        .json(&request)
-        .send()
-        .await
-        .map_err(|e| StemError::Ollama(format!("Erreur connexion Ollama: {}. Assurez-vous qu'Ollama est lancé.", e)))?;
-
-    if !response.status().is_success() {
-        return Err(StemError::Ollama(format!("Ollama a retourné une erreur: {}", response.status())));
-    }
-
-    let ollama_response: OllamaResponse = response
-        .json()
-        .await
-        .map_err(|e| StemError::Ollama(format!("Erreur parsing réponse: {}", e)))?;
-
-    Ok(ollama_response.response.trim().to_string())
+    Ok(ChatResult {
+        content: Some(msg.content.unwrap_or_default().trim().to_string()),
+        tool_calls: None,
+    })
 }
-
 
 #[tauri::command]
 pub async fn check_ollama_connection(

@@ -12,7 +12,7 @@ use commands::{
 };
 use db::Database;
 use embeddings::{generate_embedding, search_similar_notes, delete_embedding};
-use ollama::{summarize_note, check_ollama_connection, get_ollama_models, ollama_chat};
+use ollama::{check_ollama_connection, get_ollama_models, ollama_chat};
 use tauri::{Manager, Emitter};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
@@ -113,7 +113,6 @@ pub fn run() {
             update_note,
             delete_note,
             toggle_pin_note,
-            summarize_note,
             check_ollama_connection,
             get_ollama_models,
             ollama_chat,

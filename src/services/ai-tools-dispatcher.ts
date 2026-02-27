@@ -88,18 +88,6 @@ async function executeToolCall(
       return `Note supprimée avec succès.`;
     }
 
-    case "append_to_note": {
-      const { note_id, content } = call.arguments as { note_id: string; content: string };
-      if (!note_id) throw new Error("note_id est requis");
-      if (!content) throw new Error("content est requis");
-      const existingNote = await NoteRepository.getById(note_id);
-      if (!existingNote) return `Aucune note trouvée avec l'ID "${note_id}".`;
-      const merged = (existingNote.content || "") + "\n\n" + content;
-      const appended = await NoteRepository.update(note_id, { content: merged });
-      callbacks?.onNoteUpdated(appended);
-      return `Contenu ajouté à la note "${appended.title}" avec succès.`;
-    }
-
     case "search_notes": {
       const { query } = call.arguments as { query: string };
       if (!query) throw new Error("query est requis");

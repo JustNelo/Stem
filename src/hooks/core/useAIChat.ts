@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useNotesStore } from "@/store/useNotesStore";
 import { useToastStore } from "@/store/useToastStore";
-import { AIChatService, type ChatTurn } from "@/services/ai-chat";
+import { AIChatService, type ChatTurn, type NoteContext } from "@/services/ai-chat";
 import type { StoreCallbacks } from "@/services/ai-tools-dispatcher";
 import { extractPlainText } from "@/lib/utils/text";
 import {
@@ -159,8 +159,12 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
       abortRef.current = controller;
 
       try {
-        const noteContext = selectedNote
-          ? extractPlainText(selectedNote.content)
+        const noteContext: NoteContext | null = selectedNote
+          ? {
+              id: selectedNote.id,
+              title: selectedNote.title,
+              contentPreview: extractPlainText(selectedNote.content),
+            }
           : null;
 
         const streamingMsg = addMessage({ type: "assistant", content: "" });
