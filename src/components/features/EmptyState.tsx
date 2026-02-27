@@ -26,7 +26,7 @@ export function EmptyState() {
       className="relative flex h-full flex-col items-center justify-center text-center"
     >
       {/* Topographic contour lines — decorative background */}
-      <TopoPattern opacity={0.03} />
+      <TopoPattern opacity={0.07} />
 
       {/* Subtle radial glow behind content */}
       <div
