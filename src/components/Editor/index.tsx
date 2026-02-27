@@ -77,11 +77,14 @@ export function Editor({ initialContent, onChange }: EditorProps) {
     [],
   );
 
+  const lastEmittedContent = useRef<string | undefined>(initialContent);
+
   const handleUpdate = useCallback(
     ({ editor: e }: { editor: TiptapEditor }) => {
       if (!onChangeRef.current) return;
       const store = e.storage as unknown as Record<string, { getMarkdown: () => string }>;
       const md = store.markdown.getMarkdown();
+      lastEmittedContent.current = md;
       onChangeRef.current(md);
     },
     [],
@@ -98,6 +101,15 @@ export function Editor({ initialContent, onChange }: EditorProps) {
       },
     },
   });
+
+  // Sync editor content when it changes externally (e.g. AI update_note)
+  useEffect(() => {
+    if (!editor || initialContent === undefined) return;
+    if (initialContent !== lastEmittedContent.current) {
+      lastEmittedContent.current = initialContent;
+      editor.commands.setContent(initialContent, { emitUpdate: false });
+    }
+  }, [editor, initialContent]);
 
   // Wire AI slash command handler — reads current editor content and calls Ollama
   useEffect(() => {

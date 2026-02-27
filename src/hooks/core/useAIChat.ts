@@ -63,6 +63,7 @@ export function useAIChat({ onExecuteCommand, isProcessing, isOpen }: UseAIChatO
       },
       onNoteUpdated: (note) => {
         fetchNotes();
+        selectNote(note);
         addToast(`Note "${note.title}" mise à jour par l'IA`, "info");
       },
       onNoteDeleted: () => {
