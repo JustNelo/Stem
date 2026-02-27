@@ -10,6 +10,7 @@ import { FolderItem } from "@/components/features/FolderItem";
 import { RootDropZone } from "@/components/features/RootDropZone";
 import { IconButton } from "@/components/ui/IconButton";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { TopoPattern } from "@/components/ui/TopoPattern";
 import { buildFolderTree, isDescendant } from "@/lib/utils/folder-tree";
 
 const SIDEBAR_WIDTH = 260;
@@ -120,7 +121,8 @@ export function NotesSidebar({
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
       className="relative z-20 flex h-full shrink-0 flex-col overflow-hidden border-r border-white/6 bg-surface-deep panel-acrylic"
     >
-      <div style={{ width: SIDEBAR_WIDTH }} className="flex h-full flex-col pt-8">
+      <TopoPattern opacity={0.025} />
+      <div style={{ width: SIDEBAR_WIDTH }} className="relative z-10 flex h-full flex-col pt-8">
         {/* Sidebar header */}
         <div className="flex items-center justify-between px-4 py-3">
           <h2 className="font-mono text-[10px] uppercase tracking-widest text-text-muted">

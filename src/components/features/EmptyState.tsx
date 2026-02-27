@@ -3,6 +3,7 @@ import { Plus, Search } from "lucide-react";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useNotesStore } from "@/store/useNotesStore";
 import { useAppStore } from "@/store/useAppStore";
+import { TopoPattern } from "@/components/ui/TopoPattern";
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
@@ -24,6 +25,9 @@ export function EmptyState() {
       transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
       className="relative flex h-full flex-col items-center justify-center text-center"
     >
+      {/* Topographic contour lines — decorative background */}
+      <TopoPattern opacity={0.03} />
+
       {/* Subtle radial glow behind content */}
       <div
         className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"

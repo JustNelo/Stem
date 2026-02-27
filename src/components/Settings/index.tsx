@@ -6,6 +6,7 @@ import { cn } from "@/lib";
 import { ProfileTab } from "@/components/Settings/tabs/ProfileTab";
 import { AITab } from "@/components/Settings/tabs/AITab";
 import { DataTab } from "@/components/Settings/tabs/DataTab";
+import { TopoPattern } from "@/components/ui/TopoPattern";
 
 type SettingsTab = "profile" | "ai" | "data";
 
@@ -24,8 +25,9 @@ export function Settings({ onClose }: SettingsProps) {
   const version = useAppVersion();
 
   return (
-    <div className="flex h-screen w-screen flex-col bg-surface-deep pt-8">
+    <div className="relative flex h-screen w-screen flex-col bg-surface-deep pt-8">
       <div className="texture-overlay pointer-events-none fixed inset-0 z-50" />
+      <TopoPattern opacity={0.025} />
 
       <div className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col overflow-hidden px-8 py-6">
         {/* Header */}
