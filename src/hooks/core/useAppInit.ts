@@ -61,12 +61,7 @@ export function useAppInit() {
         }
         await updateNote(note.id, {
           title: content.split("\n")[0].slice(0, 50) || "Quick note",
-          content: JSON.stringify([
-            {
-              type: "paragraph",
-              content: [{ type: "text", text: content }],
-            },
-          ]),
+          content,
         });
       } catch (error) {
         console.error("Error saving quick capture:", error);

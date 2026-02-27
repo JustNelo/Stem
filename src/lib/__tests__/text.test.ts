@@ -11,10 +11,7 @@ describe("extractPlainText", () => {
     expect(extractPlainText("")).toBe("");
   });
 
-  it("returns empty string for invalid JSON", () => {
-    expect(extractPlainText("not json")).toBe("");
-  });
-
+  // Legacy BlockNote JSON support
   it("extracts text from simple BlockNote content", () => {
     const content = JSON.stringify([
       {
@@ -54,5 +51,38 @@ describe("extractPlainText", () => {
       },
     ]);
     expect(extractPlainText(content)).toBe("Hello world");
+  });
+
+  // Markdown support
+  it("extracts text from plain Markdown", () => {
+    expect(extractPlainText("Hello world")).toBe("Hello world");
+  });
+
+  it("strips Markdown headings", () => {
+    expect(extractPlainText("## My heading\nSome text")).toBe("My heading\nSome text");
+  });
+
+  it("strips bold and italic", () => {
+    expect(extractPlainText("**bold** and *italic*")).toBe("bold and italic");
+  });
+
+  it("strips code fences", () => {
+    const md = "Before\n```js\nconst x = 1;\n```\nAfter";
+    const result = extractPlainText(md);
+    expect(result).toContain("Before");
+    expect(result).toContain("After");
+    expect(result).not.toContain("const x");
+  });
+
+  it("strips inline code", () => {
+    expect(extractPlainText("use `foo` here")).toBe("use foo here");
+  });
+
+  it("strips Markdown links", () => {
+    expect(extractPlainText("[click me](https://example.com)")).toBe("click me");
+  });
+
+  it("handles non-JSON that starts with [", () => {
+    expect(extractPlainText("[not valid json")).toBe("[not valid json");
   });
 });

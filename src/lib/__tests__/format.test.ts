@@ -14,7 +14,7 @@ describe("countWords", () => {
     expect(countWords("")).toBe(0);
   });
 
-  it("counts words in plain BlockNote JSON", () => {
+  it("counts words in legacy BlockNote JSON", () => {
     const content = JSON.stringify([
       {
         type: "paragraph",
@@ -38,8 +38,12 @@ describe("countWords", () => {
     expect(countWords(content)).toBe(5);
   });
 
-  it("returns 0 for invalid JSON", () => {
-    expect(countWords("not valid json")).toBe(0);
+  it("counts words in Markdown content", () => {
+    expect(countWords("Hello world foo bar")).toBe(4);
+  });
+
+  it("counts words in Markdown with headings", () => {
+    expect(countWords("## Heading\nSome text here")).toBe(4);
   });
 });
 

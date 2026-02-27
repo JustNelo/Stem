@@ -1,90 +1,76 @@
-import "@blocknote/core/fonts/inter.css";
-import "@blocknote/mantine/style.css";
 import "./editor.css";
 
-import { useCallback, useMemo } from "react";
-import { BlockNoteSchema, createCodeBlockSpec } from "@blocknote/core";
-import { filterSuggestionItems } from "@blocknote/core/extensions";
-import { useCreateBlockNote, SuggestionMenuController, getDefaultReactSlashMenuItems } from "@blocknote/react";
-import { BlockNoteView } from "@blocknote/mantine";
-import { codeBlockOptions } from "@blocknote/code-block";
-import { AIChatService } from "@/services/ai-chat";
-import { useSettingsStore } from "@/store/useSettingsStore";
-import { AI_SLASH_COMMANDS, createAISlashMenuItem } from "@/lib/slash-commands";
+import { useCallback, useRef } from "react";
+import { useEditor, EditorContent, type Editor as TiptapEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Placeholder from "@tiptap/extension-placeholder";
+import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import TaskList from "@tiptap/extension-task-list";
+import TaskItem from "@tiptap/extension-task-item";
+import Typography from "@tiptap/extension-typography";
+import { Markdown } from "tiptap-markdown";
+import { common, createLowlight } from "lowlight";
 
-const schema = BlockNoteSchema.create().extend({
-  blockSpecs: {
-    codeBlock: createCodeBlockSpec(codeBlockOptions),
-  },
-});
+const lowlight = createLowlight(common);
+
+const extensions = [
+  StarterKit.configure({
+    codeBlock: false,
+  }),
+  CodeBlockLowlight.configure({
+    lowlight,
+    defaultLanguage: "plaintext",
+  }),
+  Placeholder.configure({
+    placeholder: "Commencez à écrire...",
+    emptyNodeClass: "is-editor-empty",
+  }),
+  TaskList,
+  TaskItem.configure({ nested: true }),
+  Typography,
+  Markdown.configure({
+    html: false,
+    transformCopiedText: true,
+    transformPastedText: true,
+  }),
+];
 
 interface EditorProps {
   initialContent?: string;
   onChange?: (content: string) => void;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function safeParse(content: string | undefined): any[] | undefined {
-  if (!content) return undefined;
-  try {
-    return JSON.parse(content);
-  } catch {
-    console.warn("Editor: failed to parse initial content, starting fresh.");
-    return undefined;
-  }
-}
-
 export function Editor({ initialContent, onChange }: EditorProps) {
-  const ollamaModel = useSettingsStore((s) => s.ollamaModel);
-  const ollamaUrl = useSettingsStore((s) => s.ollamaUrl);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
-  const editor = useCreateBlockNote({
-    schema,
-    initialContent: safeParse(initialContent),
-  });
-
-  // AI execution handler for slash commands — streams via AI SDK
-  const handleAIExecute = useCallback(
-    async (prompt: string): Promise<string> => {
-      const messages = [
-        { role: "system", content: "Tu es un assistant intelligent. Réponds TOUJOURS en français sauf si demande explicite. Utilise un style clair et structuré." },
-        { role: "user", content: prompt },
-      ];
-      let result = "";
-      for await (const token of AIChatService.stream(messages, ollamaModel, ollamaUrl)) {
-        result += token;
-      }
-      return result || "Résultat vide.";
+  const handleUpdate = useCallback(
+    ({ editor: e }: { editor: TiptapEditor }) => {
+      if (!onChangeRef.current) return;
+      const store = e.storage as unknown as Record<string, { getMarkdown: () => string }>;
+      const md = store.markdown.getMarkdown();
+      onChangeRef.current(md);
     },
-    [ollamaModel, ollamaUrl],
+    [],
   );
 
-  // Build slash menu items: defaults + AI commands
-  const getSlashMenuItems = useMemo(() => {
-    return async (query: string) => {
-      const defaultItems = getDefaultReactSlashMenuItems(editor);
-      const aiItems = AI_SLASH_COMMANDS.map((cmd) =>
-        createAISlashMenuItem(editor, cmd, handleAIExecute),
-      );
-      return filterSuggestionItems([...defaultItems, ...aiItems], query);
-    };
-  }, [editor, handleAIExecute]);
+  const editor = useEditor({
+    extensions,
+    content: initialContent || "",
+    onUpdate: handleUpdate,
+    editorProps: {
+      attributes: {
+        class: "stem-editor",
+        spellcheck: "true",
+      },
+    },
+  });
 
-  const handleChange = () => {
-    if (onChange) {
-      const content = JSON.stringify(editor.document);
-      onChange(content);
-    }
-  };
+  if (!editor) return null;
 
   return (
     <div className="editor-wrapper">
-      <BlockNoteView editor={editor} onChange={handleChange} theme="dark" slashMenu={false}>
-        <SuggestionMenuController
-          triggerCharacter="/"
-          getItems={getSlashMenuItems}
-        />
-      </BlockNoteView>
+      <EditorContent editor={editor} />
     </div>
   );
 }
