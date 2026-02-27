@@ -1,12 +1,14 @@
 mod commands;
 mod db;
 mod embeddings;
+mod error;
 mod ollama;
 
 use commands::{
     create_note, delete_note, get_all_notes, get_note, init_database, update_note, toggle_pin_note,
     export_all_data, import_all_data,
     get_all_folders, create_folder, rename_folder, delete_folder, move_note_to_folder, move_folder,
+    get_chat_messages, save_chat_message, clear_chat_messages,
 };
 use db::Database;
 use embeddings::{generate_embedding, search_similar_notes, delete_embedding};
@@ -23,15 +25,40 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_window_state::Builder::new().build())
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir().expect("Failed to get app data dir");
             std::fs::create_dir_all(&app_data_dir).expect("Failed to create app data dir");
-            
+
+            // A6: Auto-backup DB on startup (once per 24h)
             let db_path = app_data_dir.join("stem.db");
+            let backup_path = app_data_dir.join("stem.db.bak");
+            if db_path.exists() {
+                let should_backup = if backup_path.exists() {
+                    backup_path
+                        .metadata()
+                        .and_then(|m| m.modified())
+                        .map(|t| t.elapsed().unwrap_or_default().as_secs() > 86400)
+                        .unwrap_or(true)
+                } else {
+                    true
+                };
+                if should_backup {
+                    let _ = std::fs::copy(&db_path, &backup_path);
+                }
+            }
+
             let database = Database::new(db_path).expect("Failed to create database");
             database.init().expect("Failed to initialize database");
             
             app.manage(database);
+
+            // A4: Singleton reqwest::Client shared across all Ollama commands
+            let http_client = reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(180))
+                .build()
+                .expect("Failed to create HTTP client");
+            app.manage(http_client);
 
             // Register global shortcut Ctrl+Shift+N for quick capture
             let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyN);
@@ -100,7 +127,10 @@ pub fn run() {
             rename_folder,
             delete_folder,
             move_note_to_folder,
-            move_folder
+            move_folder,
+            get_chat_messages,
+            save_chat_message,
+            clear_chat_messages
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

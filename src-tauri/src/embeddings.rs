@@ -1,4 +1,5 @@
 use crate::db::Database;
+use crate::error::StemError;
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::State;
@@ -63,24 +64,19 @@ fn bytes_to_embedding(bytes: &[u8]) -> Vec<f32> {
 /// Generate an embedding vector from text via Ollama and store it for the given note.
 #[tauri::command]
 pub async fn generate_embedding(
+    client: State<'_, reqwest::Client>,
     db: State<'_, Database>,
     note_id: String,
     text: String,
     model: Option<String>,
     ollama_url: Option<String>,
-) -> Result<(), String> {
+) -> Result<(), StemError> {
     if text.trim().is_empty() {
         return Ok(());
     }
 
     let model = model.unwrap_or_else(|| "nomic-embed-text".to_string());
     let base_url = ollama_url.unwrap_or_else(|| "http://localhost:11434".to_string());
-
-    // Call Ollama embedding API
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
-        .map_err(|e| e.to_string())?;
 
     let request = OllamaEmbedRequest {
         model: model.clone(),
@@ -92,34 +88,33 @@ pub async fn generate_embedding(
         .json(&request)
         .send()
         .await
-        .map_err(|e| format!("Embedding request failed: {}", e))?;
+        .map_err(|e| StemError::Ollama(format!("Embedding request failed: {}", e)))?;
 
     if !response.status().is_success() {
-        return Err(format!("Ollama embedding error: {}", response.status()));
+        return Err(StemError::Ollama(format!("Ollama embedding error: {}", response.status())));
     }
 
     let embed_response: OllamaEmbedResponse = response
         .json()
         .await
-        .map_err(|e| format!("Failed to parse embedding response: {}", e))?;
+        .map_err(|e| StemError::Ollama(format!("Failed to parse embedding response: {}", e)))?;
 
     let embedding = embed_response
         .embeddings
         .into_iter()
         .next()
-        .ok_or_else(|| "No embedding returned".to_string())?;
+        .ok_or_else(|| StemError::Ollama("No embedding returned".to_string()))?;
 
     let embedding_bytes = embedding_to_bytes(&embedding);
     let now = current_timestamp();
 
     // Store in DB
     db.inner().clone().spawn(move |db| {
-        let conn = db.connection();
+        let conn = db.try_connection()?;
         conn.execute(
             "INSERT OR REPLACE INTO note_embeddings (note_id, embedding, model, updated_at) VALUES (?1, ?2, ?3, ?4)",
             rusqlite::params![note_id, embedding_bytes, model, now],
-        )
-        .map_err(|e| e.to_string())?;
+        )?;
         Ok(())
     })
     .await
@@ -129,12 +124,13 @@ pub async fn generate_embedding(
 /// Returns top `limit` results sorted by cosine similarity.
 #[tauri::command]
 pub async fn search_similar_notes(
+    client: State<'_, reqwest::Client>,
     db: State<'_, Database>,
     query: String,
     model: Option<String>,
     ollama_url: Option<String>,
     limit: Option<usize>,
-) -> Result<Vec<SemanticResult>, String> {
+) -> Result<Vec<SemanticResult>, StemError> {
     if query.trim().is_empty() {
         return Ok(vec![]);
     }
@@ -142,12 +138,6 @@ pub async fn search_similar_notes(
     let model = model.unwrap_or_else(|| "nomic-embed-text".to_string());
     let base_url = ollama_url.unwrap_or_else(|| "http://localhost:11434".to_string());
     let limit = limit.unwrap_or(5);
-
-    // Generate query embedding
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(15))
-        .build()
-        .map_err(|e| e.to_string())?;
 
     let request = OllamaEmbedRequest {
         model,
@@ -159,34 +149,33 @@ pub async fn search_similar_notes(
         .json(&request)
         .send()
         .await
-        .map_err(|e| format!("Query embedding failed: {}", e))?;
+        .map_err(|e| StemError::Ollama(format!("Query embedding failed: {}", e)))?;
 
     if !response.status().is_success() {
-        return Err(format!("Ollama embedding error: {}", response.status()));
+        return Err(StemError::Ollama(format!("Ollama embedding error: {}", response.status())));
     }
 
     let embed_response: OllamaEmbedResponse = response
         .json()
         .await
-        .map_err(|e| format!("Failed to parse embedding response: {}", e))?;
+        .map_err(|e| StemError::Ollama(format!("Failed to parse embedding response: {}", e)))?;
 
     let query_embedding = embed_response
         .embeddings
         .into_iter()
         .next()
-        .ok_or_else(|| "No embedding returned".to_string())?;
+        .ok_or_else(|| StemError::Ollama("No embedding returned".to_string()))?;
 
     // Compare against all stored embeddings
     db.inner().clone().spawn(move |db| {
-        let conn = db.connection();
+        let conn = db.try_connection()?;
         let mut stmt = conn
             .prepare(
                 "SELECT ne.note_id, ne.embedding, n.title
                  FROM note_embeddings ne
                  JOIN notes n ON n.id = ne.note_id
                  ORDER BY ne.updated_at DESC",
-            )
-            .map_err(|e| e.to_string())?;
+            )?;
 
         let mut results: Vec<SemanticResult> = stmt
             .query_map([], |row| {
@@ -194,8 +183,7 @@ pub async fn search_similar_notes(
                 let embedding_bytes: Vec<u8> = row.get(1)?;
                 let title: String = row.get(2)?;
                 Ok((note_id, embedding_bytes, title))
-            })
-            .map_err(|e| e.to_string())?
+            })?
             .filter_map(|r| r.ok())
             .map(|(note_id, embedding_bytes, title)| {
                 let stored_embedding = bytes_to_embedding(&embedding_bytes);
@@ -206,7 +194,7 @@ pub async fn search_similar_notes(
                     score,
                 }
             })
-            .filter(|r| r.score > 0.3) // Minimum similarity threshold
+            .filter(|r| r.score > 0.3)
             .collect();
 
         results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
@@ -219,11 +207,10 @@ pub async fn search_similar_notes(
 
 /// Delete the embedding for a given note (called when note is deleted).
 #[tauri::command]
-pub async fn delete_embedding(db: State<'_, Database>, note_id: String) -> Result<(), String> {
+pub async fn delete_embedding(db: State<'_, Database>, note_id: String) -> Result<(), StemError> {
     db.inner().clone().spawn(move |db| {
-        let conn = db.connection();
-        conn.execute("DELETE FROM note_embeddings WHERE note_id = ?1", [&note_id])
-            .map_err(|e| e.to_string())?;
+        let conn = db.try_connection()?;
+        conn.execute("DELETE FROM note_embeddings WHERE note_id = ?1", [&note_id])?;
         Ok(())
     })
     .await

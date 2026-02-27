@@ -1,4 +1,6 @@
+use crate::error::StemError;
 use serde::{Deserialize, Serialize};
+use tauri::State;
 
 #[derive(Serialize)]
 struct OllamaRequest {
@@ -53,20 +55,16 @@ struct OllamaChatResponse {
 
 #[tauri::command]
 pub async fn ollama_chat(
+    client: State<'_, reqwest::Client>,
     messages: Vec<ChatMessage>,
     model: String,
     ollama_url: String,
-) -> Result<String, String> {
+) -> Result<String, StemError> {
     let base_url = if ollama_url.is_empty() {
         "http://localhost:11434".to_string()
     } else {
         ollama_url
     };
-
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(180))
-        .build()
-        .map_err(|e| e.to_string())?;
 
     let request = OllamaChatRequest {
         model,
@@ -83,18 +81,18 @@ pub async fn ollama_chat(
         .json(&request)
         .send()
         .await
-        .map_err(|e| format!("Impossible de joindre Ollama. Vérifiez qu'il est lancé. ({})", e))?;
+        .map_err(|e| StemError::Ollama(format!("Impossible de joindre Ollama. Vérifiez qu'il est lancé. ({})", e)))?;
 
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
-        return Err(format!("Ollama a retourné une erreur {} : {}", status, body));
+        return Err(StemError::Ollama(format!("Ollama a retourné une erreur {} : {}", status, body)));
     }
 
     let chat_response: OllamaChatResponse = response
         .json()
         .await
-        .map_err(|e| format!("Erreur parsing réponse Ollama: {}", e))?;
+        .map_err(|e| StemError::Ollama(format!("Erreur parsing réponse Ollama: {}", e)))?;
 
     Ok(chat_response.message.content.trim().to_string())
 }
@@ -102,20 +100,17 @@ pub async fn ollama_chat(
 
 #[tauri::command]
 pub async fn summarize_note(
+    client: State<'_, reqwest::Client>,
     content: String,
     model: Option<String>,
     ollama_url: Option<String>,
-) -> Result<String, String> {
+) -> Result<String, StemError> {
     if content.trim().is_empty() {
         return Ok(String::new());
     }
 
     let model = model.unwrap_or_else(|| "mistral".to_string());
     let base_url = ollama_url.unwrap_or_else(|| "http://localhost:11434".to_string());
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(120))
-        .build()
-        .map_err(|e| e.to_string())?;
 
     let request = OllamaRequest {
         model,
@@ -129,28 +124,27 @@ pub async fn summarize_note(
         .json(&request)
         .send()
         .await
-        .map_err(|e| format!("Erreur connexion Ollama: {}. Assurez-vous qu'Ollama est lancé.", e))?;
+        .map_err(|e| StemError::Ollama(format!("Erreur connexion Ollama: {}. Assurez-vous qu'Ollama est lancé.", e)))?;
 
     if !response.status().is_success() {
-        return Err(format!("Ollama a retourné une erreur: {}", response.status()));
+        return Err(StemError::Ollama(format!("Ollama a retourné une erreur: {}", response.status())));
     }
 
     let ollama_response: OllamaResponse = response
         .json()
         .await
-        .map_err(|e| format!("Erreur parsing réponse: {}", e))?;
+        .map_err(|e| StemError::Ollama(format!("Erreur parsing réponse: {}", e)))?;
 
     Ok(ollama_response.response.trim().to_string())
 }
 
 
 #[tauri::command]
-pub async fn check_ollama_connection(ollama_url: Option<String>) -> Result<bool, String> {
+pub async fn check_ollama_connection(
+    client: State<'_, reqwest::Client>,
+    ollama_url: Option<String>,
+) -> Result<bool, StemError> {
     let base_url = ollama_url.unwrap_or_else(|| "http://localhost:11434".to_string());
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(3))
-        .build()
-        .map_err(|e| e.to_string())?;
 
     match client.get(&base_url).send().await {
         Ok(resp) => Ok(resp.status().is_success()),
@@ -159,27 +153,26 @@ pub async fn check_ollama_connection(ollama_url: Option<String>) -> Result<bool,
 }
 
 #[tauri::command]
-pub async fn get_ollama_models(ollama_url: Option<String>) -> Result<Vec<String>, String> {
+pub async fn get_ollama_models(
+    client: State<'_, reqwest::Client>,
+    ollama_url: Option<String>,
+) -> Result<Vec<String>, StemError> {
     let base_url = ollama_url.unwrap_or_else(|| "http://localhost:11434".to_string());
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(5))
-        .build()
-        .map_err(|e| e.to_string())?;
 
     let response = client
         .get(format!("{}/api/tags", base_url))
         .send()
         .await
-        .map_err(|e| format!("Erreur connexion Ollama: {}", e))?;
+        .map_err(|e| StemError::Ollama(format!("Erreur connexion Ollama: {}", e)))?;
 
     if !response.status().is_success() {
-        return Err(format!("Ollama a retourné une erreur: {}", response.status()));
+        return Err(StemError::Ollama(format!("Ollama a retourné une erreur: {}", response.status())));
     }
 
     let models_response: OllamaModelsResponse = response
         .json()
         .await
-        .map_err(|e| format!("Erreur parsing réponse: {}", e))?;
+        .map_err(|e| StemError::Ollama(format!("Erreur parsing réponse: {}", e)))?;
 
     Ok(models_response.models.into_iter().map(|m| m.name).collect())
 }

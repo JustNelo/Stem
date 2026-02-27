@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useRef } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Plus, ChevronLeft, ArrowDownAZ, CalendarArrowDown, Search, FolderPlus } from "lucide-react";
 import { useNotesStore } from "@/store/useNotesStore";
@@ -6,97 +6,13 @@ import { useFoldersStore } from "@/store/useFoldersStore";
 import { useNotesFilter } from "@/hooks/core/useNotesFilter";
 import { FolderRepository } from "@/services/db";
 import { NoteListItem } from "@/components/features/NoteListItem";
-import { FolderItem, type FolderTreeNode } from "@/components/features/FolderItem";
+import { FolderItem } from "@/components/features/FolderItem";
+import { RootDropZone } from "@/components/features/RootDropZone";
 import { IconButton } from "@/components/ui/IconButton";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import type { Folder } from "@/types";
+import { buildFolderTree, isDescendant } from "@/lib/utils/folder-tree";
 
 const SIDEBAR_WIDTH = 260;
-
-/** Native HTML5 drop zone for "root" (no folder) */
-function RootDropZone({
-  children,
-  onDropItem,
-}: {
-  children: React.ReactNode;
-  onDropItem: (type: string, itemId: string, targetFolderId: string | null) => void;
-}) {
-  const [isOver, setIsOver] = useState(false);
-  const countRef = useRef(0);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  }, []);
-
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    countRef.current++;
-    setIsOver(true);
-  }, []);
-
-  const handleDragLeave = useCallback(() => {
-    countRef.current--;
-    if (countRef.current <= 0) {
-      countRef.current = 0;
-      setIsOver(false);
-    }
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      countRef.current = 0;
-      setIsOver(false);
-      const type = e.dataTransfer.getData("application/stem-type");
-      const itemId = e.dataTransfer.getData("application/stem-id");
-      if (type && itemId) {
-        onDropItem(type, itemId, null);
-      }
-    },
-    [onDropItem],
-  );
-
-  return (
-    <div
-      onDragOver={handleDragOver}
-      onDragEnter={handleDragEnter}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      className={`min-h-[2rem] rounded-md transition-colors ${isOver ? "bg-accent/5" : ""}`}
-    >
-      {children}
-    </div>
-  );
-}
-
-/** Build a tree from flat folder list respecting parent_id */
-function buildFolderTree(folders: Folder[]): FolderTreeNode[] {
-  const map = new Map<string, FolderTreeNode>();
-  for (const f of folders) {
-    map.set(f.id, { ...f, children: [] });
-  }
-  const roots: FolderTreeNode[] = [];
-  for (const node of map.values()) {
-    if (node.parent_id && map.has(node.parent_id)) {
-      map.get(node.parent_id)!.children.push(node);
-    } else {
-      roots.push(node);
-    }
-  }
-  return roots;
-}
-
-/** Check if `candidateId` is a descendant of `ancestorId` */
-function isDescendant(folders: Folder[], candidateId: string, ancestorId: string): boolean {
-  const byId = new Map(folders.map((f) => [f.id, f]));
-  let current = byId.get(candidateId);
-  while (current) {
-    if (current.parent_id === ancestorId) return true;
-    current = current.parent_id ? byId.get(current.parent_id) : undefined;
-  }
-  return false;
-}
 
 interface NotesSidebarProps {
   isOpen: boolean;

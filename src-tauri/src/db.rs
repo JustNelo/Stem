@@ -1,3 +1,4 @@
+use crate::error::StemError;
 use rusqlite::{Connection, Result};
 use serde_json::Value;
 use std::path::PathBuf;
@@ -26,6 +27,9 @@ impl Database {
 
     pub fn init(&self) -> Result<()> {
         let conn = self.lock()?;
+
+        conn.execute_batch("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;")?;
+
         conn.execute(
             "CREATE TABLE IF NOT EXISTS notes (
                 id TEXT PRIMARY KEY,
@@ -73,6 +77,19 @@ impl Database {
             [],
         )?;
 
+        // Chat messages table for persistent AI chat history
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS chat_messages (
+                id TEXT PRIMARY KEY,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                command TEXT,
+                msg_type TEXT NOT NULL DEFAULT 'assistant',
+                created_at INTEGER NOT NULL
+            )",
+            [],
+        )?;
+
         // Migration v1: BlockNote JSON → Markdown
         let version: i32 = conn
             .query_row("PRAGMA user_version", [], |row| row.get(0))
@@ -106,25 +123,32 @@ impl Database {
             .map_err(|e| rusqlite::Error::InvalidParameterName(format!("Mutex poisoned: {}", e)))
     }
 
-    /// Returns an immutable reference to the connection (for reads and simple writes).
+    /// Returns a reference to the connection, panics only if mutex is poisoned.
+    /// Prefer `try_connection()` in production paths.
+    #[allow(dead_code)]
     pub fn connection(&self) -> MutexGuard<'_, Connection> {
         self.lock().expect("Database mutex poisoned")
     }
 
-    /// Returns a mutable reference to the connection (required for transactions).
+    /// Returns a reference to the connection (required for transactions).
     pub fn connection_mut(&self) -> MutexGuard<'_, Connection> {
         self.lock().expect("Database mutex poisoned")
     }
 
+    /// Safe connection accessor that returns a Result instead of panicking.
+    pub fn try_connection(&self) -> std::result::Result<MutexGuard<'_, Connection>, StemError> {
+        self.lock().map_err(StemError::from)
+    }
+
     /// Runs a blocking closure on a separate thread to avoid blocking the IPC thread.
-    pub async fn spawn<F, T>(self, f: F) -> Result<T, String>
+    pub async fn spawn<F, T>(self, f: F) -> std::result::Result<T, StemError>
     where
-        F: FnOnce(Database) -> Result<T, String> + Send + 'static,
+        F: FnOnce(Database) -> std::result::Result<T, StemError> + Send + 'static,
         T: Send + 'static,
     {
         tauri::async_runtime::spawn_blocking(move || f(self))
             .await
-            .map_err(|e| format!("Task failed: {}", e))?
+            .map_err(|e| StemError::Validation(format!("Task failed: {}", e)))?
     }
 }
 

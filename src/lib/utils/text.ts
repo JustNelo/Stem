@@ -1,9 +1,30 @@
+const TEXT_CACHE_MAX = 500;
+const textCache = new Map<string, string>();
+
 /**
  * Extracts plain text from note content.
  * Supports both Markdown (current) and legacy BlockNote JSON.
  * Strips Markdown syntax (headings, bold, code fences, etc.) to return raw text.
+ * Results are cached (bounded LRU-style) to avoid redundant parsing.
  */
 export function extractPlainText(content: string | null | undefined): string {
+  if (!content) return "";
+
+  const cached = textCache.get(content);
+  if (cached !== undefined) return cached;
+
+  const result = extractPlainTextUncached(content);
+
+  if (textCache.size >= TEXT_CACHE_MAX) {
+    const firstKey = textCache.keys().next().value;
+    if (firstKey !== undefined) textCache.delete(firstKey);
+  }
+  textCache.set(content, result);
+
+  return result;
+}
+
+function extractPlainTextUncached(content: string): string {
   if (!content) return "";
 
   // Legacy BlockNote JSON detection — starts with '[' and parses as array
