@@ -113,7 +113,7 @@ const ALL_ITEMS: SlashCommandItem[] = [
   },
   {
     title: "Bloc de code",
-    description: "Tapez ```lang pour la coloration (ex: ```js)",
+    description: "Code avec coloration syntaxique",
     icon: "code",
     group: "blocks",
     command: (editor) => editor.chain().focus().toggleCodeBlock().run(),

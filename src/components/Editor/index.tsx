@@ -5,7 +5,7 @@ import { useEditor, EditorContent, type Editor as TiptapEditor } from "@tiptap/r
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
-import { textblockTypeInputRule, mergeAttributes } from "@tiptap/core";
+import { mergeAttributes } from "@tiptap/core";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import Typography from "@tiptap/extension-typography";
@@ -24,19 +24,6 @@ const baseExtensions = [
     codeBlock: false,
   }),
   CodeBlockLowlight.extend({
-    addInputRules() {
-      return [
-        textblockTypeInputRule({
-          find: /^```$/,
-          type: this.type,
-        }),
-        textblockTypeInputRule({
-          find: /^```([a-z]+)\s$/,
-          type: this.type,
-          getAttributes: (match) => ({ language: match[1] }),
-        }),
-      ];
-    },
     renderHTML({ node, HTMLAttributes }) {
       const lang = node.attrs.language as string | null;
       return [
